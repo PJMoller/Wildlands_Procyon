@@ -1,10 +1,15 @@
 import matplotlib.pyplot as plt
 import csv
+import os
+
+base_dir = os.path.dirname(os.path.dirname(__file__))
+file_path = os.path.join(base_dir, 'data', 'visitor_sample.csv')
 
 x = []
 y = []
 
-with open('./data/visitor_sample.csv','r') as csvfile:
+
+with open(file_path,'r') as csvfile:
     plots = csv.reader(csvfile, delimiter = ',')
     
     for row in plots:
