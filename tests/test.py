@@ -3,17 +3,17 @@ import pandas as pd
 import numpy as np
 from sklearn.preprocessing import OneHotEncoder
 
-visitor_og_df = pd.read_csv("./data/visitor_sample.csv", sep=";", header=None, names=["ticket_id", "ticket_name", "date", "hour", "num_tickets_bought"])
+visitor_og_df = pd.read_csv("../data/visitor_sample.csv", sep=";", header=None, names=["ticket_id", "ticket_name", "date", "hour", "num_tickets_bought"])
 #print(visitor_og_df.head())
 #print(visitor_og_df.dtypes) # date is object weird
 #print(visitor_og_df.describe())
 
-weather_og_df = pd.read_excel("./data/weather.xlsx")
+weather_og_df = pd.read_excel("../data/weather.xlsx")
 #print(weather_og_df.head())
 #print(weather_og_df.dtypes) # date is datetime 
 #print(weather_og_df.describe())
 
-holiday_og_df = pd.read_excel("./data/Holidays 2024 Netherlands and Germany.xlsx")
+holiday_og_df = pd.read_excel("../data/Holidays 2024 Netherlands and Germany.xlsx")
 #print(holiday_og_df.head())
 #print(holiday_og_df.dtypes)
 #print(holiday_og_df.describe())
