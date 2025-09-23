@@ -96,6 +96,18 @@ print(merged_wh_df.head(20))
 
 # save the small df for ML so we can get started with that 
 merged_wh_df.to_csv("../data/ml_prot.csv", index=False) # use the csv it creates for ML, its going to be bad
+# turn the date into columns as below, should work didnt test
+'''
+merged_wh_df["hour"] = merged_wh_df["date"].dt.hour
+merged_wh_df["date"] = pd.to_datetime(merged_wh_df["date"].dt.date, format="%Y-%m-%d")
+
+merged_wh_df['year'] = merged_wh_df['date'].dt.year
+merged_wh_df['month'] = merged_wh_df['date'].dt.month
+merged_wh_df['day'] = merged_wh_df['date'].dt.day
+merged_wh_df['weekday'] = merged_wh_df['date'].dt.weekday
+
+merged_df = merged_wh_df.drop(columns=['date']) # drop date since we have year month day hour now
+'''
 
 print(final_holiday_df.head(20)) # #####################
 merged_wh_df["hour"] = merged_wh_df["date"].dt.hour
