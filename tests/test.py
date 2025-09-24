@@ -1,7 +1,5 @@
 # pip install openpyxl!!!
 import pandas as pd
-import numpy as np
-from sklearn.preprocessing import OneHotEncoder
 
 visitor_og_df = pd.read_csv("../data/visitor_sample.csv", sep=";", header=None, names=["ticket_id", "ticket_name", "date", "hour", "num_tickets_bought"])
 #print(visitor_og_df.head())
@@ -17,6 +15,8 @@ holiday_og_df = pd.read_excel("../data/Holidays 2024 Netherlands and Germany.xls
 #print(holiday_og_df.head())
 #print(holiday_og_df.dtypes)
 #print(holiday_og_df.describe())
+
+
 
 # checks for basic analysis
 
@@ -42,27 +42,28 @@ visitor_og_df["ticket_name"] = visitor_og_df["ticket_name"].astype(str) # conver
 visitor_og_df["hour"] = pd.to_datetime(visitor_og_df["hour"], format="%H:%M:%S").dt.hour # convert to hour int
 
 # merge hour with date to have a full datetime
-visitor_og_df['date'] = pd.to_datetime(visitor_og_df['date'].astype(str) + ' ' + visitor_og_df['hour'].astype(str) + ':00:00') # merge hour with date
+visitor_og_df["date"] = pd.to_datetime(visitor_og_df["date"].astype(str) + " " + visitor_og_df["hour"].astype(str) + ":00:00") # merge hour with date
 
 # get hourly summary
 visitor_og_df = visitor_og_df.drop(columns=["hour", "ticket_name", "ticket_id"]) # drop hour and ticket name since we dont need it
 hourly_summary = visitor_og_df.groupby(["date"])["num_tickets_bought"].sum().reset_index()
-
-#hourly_df = hourly_summary.pivot(index="date", columns="hour", values="num_tickets_bought").fillna(0) # just in case we need it like this
-
 #print(hourly_summary.head(20)) #test, looks good
+
+
 
 # changes to weather df
 
-weather_og_df.columns = ["date", "temperature", "rain", "precipitation", "hour"] # rename columns
+weather_og_df.columns = ["date", "temperature", "rain", "percipitation", "hour"] # rename columns
 
 
 
 # changes to the holiday df
 
-holiday_og_df = holiday_og_df.drop(columns=["Vakantie", "Regio's", "Feestdag"]) # drop the useless columns
+# Drop irrelevant columns
+holiday_og_df = holiday_og_df.drop(columns=["Vakantie", "Regio's", "Feestdag"])
 
-holiday_og_df.columns = ["NLNoord", "NLMidden", "NLZuid", "Niedersachsen", "Nordrhein-Westfalen", "date"] # rename columns
+# Rename columns so all regions and date are clear
+holiday_og_df.columns = ["NLNoord", "NLMidden", "NLZuid", "Niedersachsen", "Nordrhein-Westfalen", "date"]
 
 region_cols = ["NLNoord", "NLMidden", "NLZuid", "Niedersachsen", "Nordrhein-Westfalen"]
 
@@ -71,62 +72,50 @@ long_df = holiday_og_df.melt(id_vars=["date"], value_vars=region_cols,
                   var_name="region", value_name="holiday")
 long_df["holiday"] = long_df["holiday"].fillna("None")
 
-# One-hot encode region and holiday columns
-ohe = OneHotEncoder(sparse_output=False, dtype=int)
-encoded = ohe.fit_transform(long_df[["region", "holiday"]])
-encoded_df = pd.DataFrame(encoded, columns=ohe.get_feature_names_out(["region", "holiday"]))
+# Create combination label
+long_df["region_holiday"] = long_df["region"] + "_" + long_df["holiday"]
 
-# Concatenate encoded columns with dates
-result_df = pd.concat([long_df[["date"]], encoded_df], axis=1)
+# One-hot encode the combination
+encoded = pd.get_dummies(long_df["region_holiday"])
+result_df = pd.concat([long_df[["date"]], encoded], axis=1)
 
-# Aggregate: one row per date, with max() to combine region/holiday across regions
+# Aggregate, so each date s 1s only indicate a true region-holiday match
 final_holiday_df = result_df.groupby("date").max().reset_index()
 
-# Now final_holiday_df can be used for ML, one hot encoded
-#print(final_holiday_df.head())
+# Convert all bool columns to 1s and 0s
+bool_cols = final_holiday_df.columns.drop("date")
+final_holiday_df[bool_cols] = final_holiday_df[bool_cols].astype(int) # since true = 1 and false = 0 its easy to convert like this
+
+# Now final_holiday_df can be used for merging, one hot encoded
+#print(final_holiday_df.head()) # should be good
 
 
 
-### now i need to concat the hourly visitors +  weather data
+# merge the 3 datasets, #1 weather + hourly, #2 add holidays
 
-# try to merge
+merged_wh_df = pd.merge(weather_og_df, hourly_summary, on="date", how="inner")
+#print(merged_wh_df.head(20)) # test, looks good
 
-merged_wh_df = pd.merge(weather_og_df, hourly_summary, on='date', how='inner')
-print(merged_wh_df.head(20))
-
-# save the small df for ML so we can get started with that 
-merged_wh_df.to_csv("../data/ml_prot.csv", index=False) # use the csv it creates for ML, its going to be bad
-# turn the date into columns as below, should work didnt test
-'''
 merged_wh_df["hour"] = merged_wh_df["date"].dt.hour
 merged_wh_df["date"] = pd.to_datetime(merged_wh_df["date"].dt.date, format="%Y-%m-%d")
+#print(merged_wh_df.head(20)) # test looks good
 
-merged_wh_df['year'] = merged_wh_df['date'].dt.year
-merged_wh_df['month'] = merged_wh_df['date'].dt.month
-merged_wh_df['day'] = merged_wh_df['date'].dt.day
-merged_wh_df['weekday'] = merged_wh_df['date'].dt.weekday
+# now merge with holidays
+merged_final_df = pd.merge(merged_wh_df, final_holiday_df, on="date", how="inner")
 
-merged_df = merged_wh_df.drop(columns=['date']) # drop date since we have year month day hour now
-'''
+merged_final_df["year"] = merged_final_df["date"].dt.year
+merged_final_df["month"] = merged_final_df["date"].dt.month
+merged_final_df["day"] = merged_final_df["date"].dt.day
+merged_final_df["weekday"] = merged_final_df["date"].dt.weekday
 
-print(final_holiday_df.head(20)) # #####################
-merged_wh_df["hour"] = merged_wh_df["date"].dt.hour
-merged_wh_df["date"] = pd.to_datetime(merged_wh_df["date"].dt.date, format="%Y-%m-%d")
-#print(merged_wh_df.head(20))
-#print(final_holiday_df.head(20))
-merged_final_df = pd.merge(merged_wh_df, final_holiday_df, on='date', how='inner')
+merged_df = merged_final_df.drop(columns=["date"]) # drop date since we have year month day hour now
 
 
-merged_final_df['year'] = merged_final_df['date'].dt.year
-merged_final_df['month'] = merged_final_df['date'].dt.month
-merged_final_df['day'] = merged_final_df['date'].dt.day
-merged_final_df['weekday'] = merged_final_df['date'].dt.weekday
 
-merged_df = merged_final_df.drop(columns=['date']) # drop date since we have year month day hour now
-print(merged_df.head(20))
+# tests
 
-#print(weather_og_df.head())
-#print(hourly_summary.head())
+#print(merged_df.head(20)) # everything looks good
 
-#merged_df.to_csv("../data/processed_merge.csv", index=False) # for visual purposes for myself
-#final_holiday_df.to_csv("../data/processed_holidays.csv", index=False) # for visual purposes for myself
+
+merged_df.to_csv("../data/processed_merge.csv", index=False) # can be used for ML now (probably)
+#final_holiday_df.to_csv("../data/processed_holidays.csv", index=False) # for visual purposes for myself, not needed for anything now, but ill keep it just in case i messed up something
