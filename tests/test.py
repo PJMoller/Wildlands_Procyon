@@ -60,7 +60,7 @@ weather_og_df.columns = ["date", "temperature", "rain", "percipitation", "hour"]
 # changes to the holiday df
 
 # Drop irrelevant columns
-holiday_og_df = holiday_og_df.drop(columns=["Vakantie", "Regio's", "Feestdag"])
+#holiday_og_df = holiday_og_df.drop(columns=["Vakantie", "Regio's", "Feestdag"])
 
 # Rename columns so all regions and date are clear
 holiday_og_df.columns = ["NLNoord", "NLMidden", "NLZuid", "Niedersachsen", "Nordrhein-Westfalen", "date"]
@@ -119,3 +119,28 @@ merged_df = merged_final_df.drop(columns=["date"]) # drop date since we have yea
 
 merged_df.to_csv("../data/processed_merge.csv", index=False) # can be used for ML now (probably)
 #final_holiday_df.to_csv("../data/processed_holidays.csv", index=False) # for visual purposes for myself, not needed for anything now, but ill keep it just in case i messed up something
+
+
+'''
+# training models
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
+X = merged_df.drop(columns=["num_tickets_bought"])
+y = merged_df["num_tickets_bought"]
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+#change the model keep the rest, namings too!
+model = RandomForestRegressor(n_estimators=100, random_state=42)
+model.fit(X_train, y_train)
+y_pred = model.predict(X_test)
+# MAE: 153.70454545454547, MSE: 35569.9221, R2: 0.8356520616079776 with 100 estimators
+
+mae = mean_absolute_error(y_test, y_pred)
+mse = mean_squared_error(y_test, y_pred)
+r2 = r2_score(y_test, y_pred)
+print(y_test.values)
+print(y_pred)
+print(f"MAE: {mae}, MSE: {mse}, R2: {r2}")
+'''
