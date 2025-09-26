@@ -1,3 +1,4 @@
 data/*
+!data/processed
+!data/raw
 !data/.gitkeep
-!data/README.md
