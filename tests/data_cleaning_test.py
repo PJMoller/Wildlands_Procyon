@@ -1,7 +1,7 @@
 # pip install openpyxl!!!
 import pandas as pd
 
-visitor_og_df = pd.read_csv("../data/raw/visitor_sample.csv", sep=";", header=None, names=["ticket_id", "ticket_name", "date", "hour", "num_tickets_bought"])
+visitor_og_df = pd.read_csv("../data/raw/visitordaily_sample.csv", sep=";")
 #print(visitor_og_df.head())
 #print(visitor_og_df.dtypes) # date is object weird
 #print(visitor_og_df.describe())
@@ -11,7 +11,7 @@ weather_og_df = pd.read_excel("../data/raw/weather.xlsx")
 #print(weather_og_df.dtypes) # date is datetime 
 #print(weather_og_df.describe())
 
-holiday_og_df = pd.read_excel("../data/raw/Holidays 2024 Netherlands and Germany.xlsx")
+holiday_og_df = pd.read_excel("../data/raw/Holidays 2023-2026 Netherlands and Germany.xlsx")
 #print(holiday_og_df.head())
 #print(holiday_og_df.dtypes)
 #print(holiday_og_df.describe())
@@ -35,32 +35,30 @@ holiday_og_df = pd.read_excel("../data/raw/Holidays 2024 Netherlands and Germany
 
 
 # changes to the visitors df
+visitor_og_df.columns = ["groupID","ticket_name", "date", "ticket_num"] # lowercase columns
 visitor_og_df["date"] = pd.to_datetime(visitor_og_df["date"], format="%Y-%m-%d") # convert to datetime
-visitor_og_df["num_tickets_bought"] = visitor_og_df["num_tickets_bought"].astype(int) # convert to int
-visitor_og_df["ticket_id"] = visitor_og_df["ticket_id"].astype(int) # convert to int
+visitor_og_df["ticket_num"] = visitor_og_df["ticket_num"].astype(int) # convert to int
 visitor_og_df["ticket_name"] = visitor_og_df["ticket_name"].astype(str) # convert to str just to make sure
-visitor_og_df["hour"] = pd.to_datetime(visitor_og_df["hour"], format="%H:%M:%S").dt.hour # convert to hour int
 
-# merge hour with date to have a full datetime
-visitor_og_df["date"] = pd.to_datetime(visitor_og_df["date"].astype(str) + " " + visitor_og_df["hour"].astype(str) + ":00:00") # merge hour with date
+visitor_og_df = visitor_og_df.drop("groupID", axis=1) # drop access group id since its not needed
 
-# get hourly summary
-visitor_og_df = visitor_og_df.drop(columns=["hour", "ticket_name", "ticket_id"]) # drop hour and ticket name since we dont need it
-hourly_summary = visitor_og_df.groupby(["date"])["num_tickets_bought"].sum().reset_index()
-#print(hourly_summary.head(20)) #test, looks good
+visitor_og_df = pd.get_dummies(visitor_og_df, columns=["ticket_name"], prefix="ticket") # one hot encode ticket names
+
+bool_cols = visitor_og_df.columns.drop(["date","ticket_num"])
+visitor_og_df[bool_cols] = visitor_og_df[bool_cols].astype(int) # since true = 1 and false = 0 its easy to convert like this
+#print(visitor_og_df.head(20))
 
 
 
 # changes to weather df
 
 weather_og_df.columns = ["date", "temperature", "rain", "percipitation", "hour"] # rename columns
+weather_og_df = weather_og_df.drop("hour", axis=1)
+#print(holiday_og_df.head(20))
 
 
 
 # changes to the holiday df
-
-# Drop irrelevant columns
-#holiday_og_df = holiday_og_df.drop(columns=["Vakantie", "Regio's", "Feestdag"])
 
 # Rename columns so all regions and date are clear
 holiday_og_df.columns = ["NLNoord", "NLMidden", "NLZuid", "Niedersachsen", "Nordrhein-Westfalen", "date"]
@@ -87,18 +85,14 @@ bool_cols = final_holiday_df.columns.drop("date")
 final_holiday_df[bool_cols] = final_holiday_df[bool_cols].astype(int) # since true = 1 and false = 0 its easy to convert like this
 
 # Now final_holiday_df can be used for merging, one hot encoded
-#print(final_holiday_df.head()) # should be good
 
 
 
 # merge the 3 datasets, #1 weather + hourly, #2 add holidays
 
-merged_wh_df = pd.merge(weather_og_df, hourly_summary, on="date", how="inner")
-#print(merged_wh_df.head(20)) # test, looks good
+merged_wh_df = pd.merge(weather_og_df, visitor_og_df, on="date", how="inner")
 
-merged_wh_df["hour"] = merged_wh_df["date"].dt.hour
 merged_wh_df["date"] = pd.to_datetime(merged_wh_df["date"].dt.date, format="%Y-%m-%d")
-#print(merged_wh_df.head(20)) # test looks good
 
 # now merge with holidays
 merged_final_df = pd.merge(merged_wh_df, final_holiday_df, on="date", how="inner")
@@ -108,7 +102,7 @@ merged_final_df["month"] = merged_final_df["date"].dt.month
 merged_final_df["day"] = merged_final_df["date"].dt.day
 merged_final_df["weekday"] = merged_final_df["date"].dt.weekday
 
-merged_df = merged_final_df.drop(columns=["date"]) # drop date since we have year month day hour now
+merged_df = merged_final_df.drop(columns=["date"]) # drop date since we have year month day now
 
 
 
@@ -117,30 +111,7 @@ merged_df = merged_final_df.drop(columns=["date"]) # drop date since we have yea
 #print(merged_df.head(20)) # everything looks good
 
 
-merged_df.to_csv("../data/processed_merge.csv", index=False) # can be used for ML now (probably)
+merged_df.to_csv("../data/processed/processed_merge.csv", index=False) # can be used for ML now (probably)
 #final_holiday_df.to_csv("../data/processed_holidays.csv", index=False) # for visual purposes for myself, not needed for anything now, but ill keep it just in case i messed up something
 
-
-'''
-# training models
-from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
-
-X = merged_df.drop(columns=["num_tickets_bought"])
-y = merged_df["num_tickets_bought"]
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-#change the model keep the rest, namings too!
-model = RandomForestRegressor(n_estimators=100, random_state=42)
-model.fit(X_train, y_train)
-y_pred = model.predict(X_test)
-# MAE: 153.70454545454547, MSE: 35569.9221, R2: 0.8356520616079776 with 100 estimators
-
-mae = mean_absolute_error(y_test, y_pred)
-mse = mean_squared_error(y_test, y_pred)
-r2 = r2_score(y_test, y_pred)
-print(y_test.values)
-print(y_pred)
-print(f"MAE: {mae}, MSE: {mse}, R2: {r2}")
-'''
+# training models in model_training.py
