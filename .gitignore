@@ -3,6 +3,5 @@ data/*
 !data/processed/
 data/raw/*
 data/processed/*
-!data/.gitkeep
 !data/raw/.gitkeep
 !data/processed/.gitkeep
