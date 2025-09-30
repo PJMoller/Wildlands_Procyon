@@ -21,8 +21,8 @@ y_pred = model.predict(X_test)
 mae = mean_absolute_error(y_test, y_pred)
 mse = mean_squared_error(y_test, y_pred)
 r2 = r2_score(y_test, y_pred)
-#print(y_test.values)
-#print(y_pred)
+print(y_test.values)
+print(y_pred)
 print(f"MAE: {mae}, MSE: {mse}, R2: {r2}")
 # MAE: 32.28782051282052, MSE: 9095.703798717948, R2: 0.9374264233080393 sheesh rly nice scores
 
