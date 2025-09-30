@@ -24,6 +24,15 @@ media frames or flex box so it's responsive to the users screen.
     grid-column: span 1; /* This way they can be wider*/
 }
 
+/* The smaller type of containers */
+.outer-wrapper {
+    background-color: #31313b;
+    border-radius: 10px;
+    display: flex;
+    justify-content: space-around;
+    padding: 25px;
+}
+
 /* The widgets */
 /* It's not perfect yet we need to adjust some things */
 .events {
