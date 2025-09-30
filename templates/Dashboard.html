@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- We still need to add an outer box and style it
+        the colors should be slightly adjusted aswell
+        We should figure out how to connect it with Wildlands news?
+        Currently just tried to recreate it, CSS was annoying we will need to fix it -->
+
+        <!--
+        The spaces are there to indicate that it has multiple classes
+        We will need to do some fine tuning
+        -->
+        <div class="outer-wrapper">
+            <div class="widget current-day">
+                <h3>Current day</h3>
+                <p>Wednesday, Oct 1</p>
+                <p>No event</p>
+                <p>3.900 Visitors</p>
+            </div>
+            <div class="widget tomorrow">
+                <h3>Tomorrow</h3>
+                <p>Tuesday, Oct 2</p>
+                <p>No event</p>
+                <p>5.705 Visitors</p>
+            </div>
+        </div>
+
+        <div class="widget events">
+            <h3>Events (Impact)</h3>
+            <div class="event good">
+                <p>GOOD!</p>
+                <p>WILDnights, Dec 20 - Jan 4</p>
+            </div>
+            <div class="event bad">
+                <p>BAD!</p>
+                <p>Exclusive Evening, Mar 28</p>
+            </div>
+        </div>
+
+        <!-- Placeholder before we can actually get the graph and interactivity 
+         Most likely the use of javascript will be needed
+        -->
+        <div class="widget attendance-chart">
+            <h3>Expected Attendance</h3>
+            <div class="chart-options">
+                <button class="active">Day</button>
+                <button>Week</button>
+                <button>Month</button>
+                <button>Year</button>
+            </div>
+            <div class="chart-area">
+                <p>Chart will go here.</p>
+            </div>
+        </div>
+
+        <!-- We don't need a confirm day do we?
+         We could just make the calander a button itself?
+         -->
+        <div class="widget calendar">
+            <div class="calendar-grid">
+                <p>All those days</p>
+            </div>
+            <button>Confirm day</button>
+        </div>
+        <div class="outer-wrapper">
+            <div class="widget forecast">
+                <h3>Forecast of chosen day</h3>
+                <p>4.570 visitors</p>
+            </div>
+            <div class="widget manual-link">
+                <a href="#">LINK TO MANUAL SLIDER PAGE</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
