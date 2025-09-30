@@ -1,1 +1,8 @@
 flask
+pandas
+pickle
+numpy
+sqlite3
+datetime
+joblib
+sklearn
