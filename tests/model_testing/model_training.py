@@ -1,8 +1,8 @@
-from sklearn.model_selection import train_test_split, cross_validate, KFold
+from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score, make_scorer
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 import pandas as pd
 import pickle
 
@@ -14,18 +14,32 @@ X = processed_df.drop(columns=["ticket_num"])
 y = processed_df["ticket_num"]
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# change the model keep the rest, namings too!
-model = RandomForestRegressor(n_estimators=100, random_state=42)
-model.fit(X_train, y_train)
-y_pred = model.predict(X_test)
+# RF Regressor with hyperparameter tuning
+model = RandomForestRegressor(random_state=42)
+
+param_grid = {
+    "n_estimators": [50, 100, 200], # number of trees
+    "max_depth": [None, 10, 20, 30], # max depth of trees
+    "min_samples_split": [2, 5, 10], # min samples for splitting a node
+    "min_samples_leaf": [1, 2, 4] # min samples in leaf node
+}
+
+grid_search = GridSearchCV(estimator=model, param_grid=param_grid,cv=5, scoring="neg_mean_absolute_error", n_jobs=-1, verbose=1)
+
+grid_search.fit(X_train, y_train)
+
+print("Best parameters found:", grid_search.best_params_)
+
+best_model = grid_search.best_estimator_
+y_pred = best_model.predict(X_test)
 
 mae = mean_absolute_error(y_test, y_pred)
 mse = mean_squared_error(y_test, y_pred)
 r2 = r2_score(y_test, y_pred)
-print(y_test.values)
-print(y_pred)
+#print(y_test.values)
+#print(y_pred)
 print(f"RF MAE: {mae}, MSE: {mse}, R2: {r2}")
-
+"""
 # Polynomial Regression
 poly = PolynomialFeatures(degree=2)
 x_poly = poly.fit_transform(X_train)
@@ -42,21 +56,8 @@ r2 = r2_score(y_test, y_pred)
 #print(y_pred)
 print(f"Poly MAE: {mae}, MSE: {mse}, R2: {r2}")
 
-
-# crossval
-scoring = {"MAE": make_scorer(mean_absolute_error),"MSE": make_scorer(mean_squared_error),"R2": "r2"}
-kf = KFold(n_splits=5, shuffle=True, random_state=42)
-#cv_results = cross_validate(model, X, y, cv=kf, scoring=scoring)
-cv_results = cross_validate(model1, X, y, cv=kf, scoring=scoring)
-
-print("CV MAE:", cv_results["test_MAE"])
-print("CV MSE:", cv_results["test_MSE"])
-print("CV R2:", cv_results["test_R2"])
-print("Mean CV MAE:", cv_results["test_MAE"].mean())
-print("Mean CV MSE:", cv_results["test_MSE"].mean())
-print("Mean CV R2:", cv_results["test_R2"].mean())
-
 # save the model to connect to the website later
 
 with open("../../data/processed/model.pkl", "wb") as f:
     pickle.dump(model, f)
+"""
