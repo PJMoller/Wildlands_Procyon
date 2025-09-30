@@ -8,3 +8,4 @@ data/database/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 !data/database/.gitkeep
+!data/database/database_sample.db

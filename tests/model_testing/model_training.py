@@ -4,6 +4,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score, make_scorer
 import pandas as pd
+import pickle
 
 # loading the processed data
 processed_df = pd.read_csv("../../data/processed/processed_merge.csv")
@@ -57,3 +58,5 @@ print("Mean CV R2:", cv_results["test_R2"].mean())
 
 # save the model to connect to the website later
 
+with open("../../data/processed/model.pkl", "wb") as f:
+    pickle.dump(model, f)
