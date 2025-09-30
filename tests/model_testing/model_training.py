@@ -2,6 +2,7 @@ from sklearn.model_selection import train_test_split, cross_validate, KFold
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score, make_scorer
 import pandas as pd
+import pickle
 
 # loading the processed data
 processed_df = pd.read_csv("../../data/processed/processed_merge.csv")
@@ -36,3 +37,6 @@ print("Mean CV MSE:", cv_results["test_MSE"].mean())
 print("Mean CV R2:", cv_results["test_R2"].mean())
 
 # save the model to connect to the website later
+
+with open("../../data/processed/model.pkl", "wb") as f:
+    pickle.dump(model, f)
