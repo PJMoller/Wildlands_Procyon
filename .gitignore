@@ -2,6 +2,7 @@ data/*
 !data/raw/
 !data/processed/
 !data/database/
+!data/database/database_sample.db
 data/raw/*
 data/processed/*
 data/database/*
