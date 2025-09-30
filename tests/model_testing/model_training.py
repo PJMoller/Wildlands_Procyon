@@ -1,5 +1,7 @@
 from sklearn.model_selection import train_test_split, cross_validate, KFold
 from sklearn.ensemble import RandomForestRegressor
+from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import PolynomialFeatures
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score, make_scorer
 import pandas as pd
 
@@ -21,12 +23,30 @@ mse = mean_squared_error(y_test, y_pred)
 r2 = r2_score(y_test, y_pred)
 print(y_test.values)
 print(y_pred)
-print(f"MAE: {mae}, MSE: {mse}, R2: {r2}")
+print(f"RF MAE: {mae}, MSE: {mse}, R2: {r2}")
+
+# Polynomial Regression
+poly = PolynomialFeatures(degree=2)
+x_poly = poly.fit_transform(X_train)
+model1 = LinearRegression()
+model1.fit(x_poly, y_train)
+x_test_poly = poly.transform(X_test)
+y_pred = model1.predict(x_test_poly)
+
+
+mae = mean_absolute_error(y_test, y_pred)
+mse = mean_squared_error(y_test, y_pred)
+r2 = r2_score(y_test, y_pred)
+#print(y_test.values)
+#print(y_pred)
+print(f"Poly MAE: {mae}, MSE: {mse}, R2: {r2}")
+
 
 # crossval
 scoring = {"MAE": make_scorer(mean_absolute_error),"MSE": make_scorer(mean_squared_error),"R2": "r2"}
 kf = KFold(n_splits=5, shuffle=True, random_state=42)
-cv_results = cross_validate(model, X, y, cv=kf, scoring=scoring)
+#cv_results = cross_validate(model, X, y, cv=kf, scoring=scoring)
+cv_results = cross_validate(model1, X, y, cv=kf, scoring=scoring)
 
 print("CV MAE:", cv_results["test_MAE"])
 print("CV MSE:", cv_results["test_MSE"])
@@ -36,3 +56,4 @@ print("Mean CV MSE:", cv_results["test_MSE"].mean())
 print("Mean CV R2:", cv_results["test_R2"].mean())
 
 # save the model to connect to the website later
+
