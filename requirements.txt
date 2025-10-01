@@ -6,3 +6,6 @@ sqlite3
 datetime
 joblib
 sklearn
+openmeteo-requests
+requests-cache
+retry-requests
