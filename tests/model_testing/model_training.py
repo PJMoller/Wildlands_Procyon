@@ -47,27 +47,28 @@ print(f"RF MAE: {mae}, MSE: {mse}, R2: {r2}")
 # A pipeline that first creates polynomial features then applies linear regression
 model1_pipe = Pipeline([
     ('poly', PolynomialFeatures()),
-    ('ridge', Ridge()),
+    ('linear', LinearRegression()),
 ])
 
-# After some experimentation, these parameters were found to be optimal (my VSC didnt like the other parameters)
+# A parameter grid to search for the best degree of polynomial features
 param_grid = {
-    'poly__degree': [2],
-    'ridge__alpha': [10.0]
+    'poly__degree': [2,3,4]
 }
 
-
+# grid search for hyperparameter tuning
 grid_search = GridSearchCV(estimator=model1_pipe,param_grid=param_grid,cv=5,
                            scoring="neg_mean_absolute_error")
 
+# fitting the model
 grid_search.fit(X_train, y_train)
 
 print("Best parameters found:", grid_search.best_params_)
 
+# getting the best model from grid search
 best_model = grid_search.best_estimator_
 y_pred = best_model.predict(X_test)
 
-
+# evaluating the model
 mae = mean_absolute_error(y_test, y_pred)
 mse = mean_squared_error(y_test, y_pred)
 r2 = r2_score(y_test, y_pred)
