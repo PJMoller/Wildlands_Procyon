@@ -1,6 +1,6 @@
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.linear_model import LinearRegression, Ridge, Lasso
+from sklearn.linear_model import LinearRegression, Ridge, Lasso, ElasticNet
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.pipeline import Pipeline
@@ -42,6 +42,7 @@ r2 = r2_score(y_test, y_pred)
 print(f"RF MAE: {mae}, MSE: {mse}, R2: {r2}")
 """
 
+"""
 # Polynomial Regression
 
 # A pipeline that first creates polynomial features then applies linear regression
@@ -55,26 +56,57 @@ param_grid = {
     'poly__degree': [2,3,4]
 }
 
-# grid search for hyperparameter tuning
+# Grid search for hyperparameter tuning
 grid_search = GridSearchCV(estimator=model1_pipe,param_grid=param_grid,cv=5,
                            scoring="neg_mean_absolute_error")
 
-# fitting the model
+# Fitting the model
 grid_search.fit(X_train, y_train)
 
 print("Best parameters found:", grid_search.best_params_)
 
-# getting the best model from grid search
+# Getting the best model from grid search
 best_model = grid_search.best_estimator_
 y_pred = best_model.predict(X_test)
 
-# evaluating the model
+# Evaluating the model
 mae = mean_absolute_error(y_test, y_pred)
 mse = mean_squared_error(y_test, y_pred)
 r2 = r2_score(y_test, y_pred)
 #print(y_test.values)
 #print(y_pred)
 print(f"Poly MAE: {mae}, MSE: {mse}, R2: {r2}")
+"""
+
+# ElasticNet Regression
+
+model2_elastic = ElasticNet()
+
+param_grid = {
+    'alpha': [0.01,0.1,0.5,1.0,2.5,5.0],    # Overall regularization strength
+    'l1_ratio': [0.1,0.3,0.5,0.7,0.9,1.0]   # Balance between the L1 and L2 penalties (Lasso and Ridge)
+}
+
+# Grid search for hyperparameter tuning
+grid_search = GridSearchCV(estimator=model2_elastic,param_grid=param_grid,cv=5,
+                           scoring="neg_mean_absolute_error")
+
+# Fitting the model
+grid_search.fit(X_train, y_train)
+
+print("Best parameters found:", grid_search.best_params_)
+
+# Getting the best model from the grid search
+best_model = grid_search.best_estimator_
+y_pred = best_model.predict(X_test)
+
+# Evaluating the model
+mae = mean_absolute_error(y_test, y_pred)
+mse = mean_squared_error(y_test, y_pred)
+r2 = r2_score(y_test, y_pred)
+#print(y_test.values)
+#print(y_pred)
+print(f"Elasticnet MAE: {mae}, MSE: {mse}, R2: {r2}")
 
 # save the model to connect to the website later
 
