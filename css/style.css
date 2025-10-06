@@ -1,0 +1,56 @@
+body {
+    background-color: #1a1a1a;
+    color: #f0f0f0;
+    font-family: sans-serif;
+}
+
+/* We will need to adjust it, just a quick template we could look into
+media frames or flex box so it's responsive to the users screen.
+*/
+.container {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); /* Three equal columns */
+    gap: 20px; /* Space between containers */
+    padding: 20px;
+}
+
+.widget {
+    background-color: #2b2b2b;
+    border-radius: 10px;
+    padding: 20px;
+}
+
+.events, .attendance-chart, .calendar {
+    grid-column: span 1; /* This way they can be wider*/
+}
+
+/* The smaller type of containers */
+.outer-wrapper {
+    background-color: #31313b;
+    border-radius: 10px;
+    display: flex;
+    justify-content: space-around;
+    padding: 25px;
+}
+
+/* The widgets */
+/* It's not perfect yet we need to adjust some things */
+.events {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.event {
+    background-color: #3a3a3a;
+    border-radius: 5px;
+    padding: 10px;
+}
+
+.event.good {
+    border-left: 5px solid #4CAF50;
+}
+
+.event.bad {
+    border-left: 5px solid #F44336;
+}
