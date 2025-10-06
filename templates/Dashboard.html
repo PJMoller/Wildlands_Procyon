@@ -3,76 +3,137 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard</title>
-    <link rel="stylesheet" href="./CSS/style.css">
+    <title>Wildlands Dashboard</title>
+    <link rel="stylesheet" href="CSS/style.css">
 </head>
 <body>
     <div class="container">
-        <!-- We still need to add an outer box and style it
-        the colors should be slightly adjusted aswell
-        We should figure out how to connect it with Wildlands news?
-        Currently just tried to recreate it, CSS was annoying we will need to fix it -->
-
-        <!--
-        The spaces are there to indicate that it has multiple classes
-        We will need to do some fine tuning
-        -->
         <div class="widget current-day">
             <h3>Current day</h3>
-            <p>Wednesday, Oct 1</p>
-            <p>No event</p>
-            <p>3.900 Visitors</p>
+            <div class="content-box">
+                <p>Wednesday, Oct 1</p>
+                <p>No event</p>
+                <p class="visitor-count">3.900 Visitors</p>
+            </div>
         </div>
+        
         <div class="widget tomorrow">
             <h3>Tomorrow</h3>
-            <p>Tuesday, Oct 2</p>
-            <p>No event</p>
-            <p>5.705 Visitors</p>
+            <div class="content-box">
+                <p>Thursday, Oct 2</p>
+                <p>No event</p>
+                <p class="visitor-count">5.705 Visitors</p>
+            </div>
         </div>
+        
         <div class="widget events">
             <h3>Events (Impact)</h3>
             <div class="event good">
-                <p>GOOD!</p>
-                <p>WILDnights, Dec 20 - Jan 4</p>
+                <span class="event-status">GOOD!</span>
+                <div class="event-content">
+                    <p class="event-title">WILDnights, Dec 20 - Jan 4</p>
+                    <p class="event-description">Entertainment, your audience is using weekly social media.</p>
+                </div>
             </div>
             <div class="event bad">
-                <p>BAD!</p>
-                <p>Exclusive Evening, Mar 28</p>
+                <span class="event-status">BAD!</span>
+                <div class="event-content">
+                    <p class="event-title">Exclusive Evening, Jul 28</p>
+                    <p class="event-description">Entertainment, your latest evening turn button recently launched.</p>
+                </div>
             </div>
         </div>
 
-        <!-- Placeholder before we can actually get the graph and interactivity 
-         Most likely the use of javascript will be needed
-        -->
         <div class="widget attendance-chart">
             <h3>Expected Attendance</h3>
-            <div class="chart-options">
-                <button class="active">Day</button>
-                <button>Week</button>
-                <button>Month</button>
-                <button>Year</button>
-            </div>
-            <div class="chart-area">
-                <p>Chart will go here.</p>
+            <div class="content-box">
+                <div class="chart-options">
+                    <button class="active">Day</button>
+                    <button>Week</button>
+                    <button>Month</button>
+                    <button>Year</button>
+                </div>
+                <div class="chart-area">
+                    <!-- Simple bar chart representation -->
+                    <div class="chart-bars">
+                        <div class="bar" style="height: 80%"></div>
+                        <div class="bar" style="height: 60%"></div>
+                        <div class="bar" style="height: 90%"></div>
+                        <div class="bar" style="height: 70%"></div>
+                        <div class="bar" style="height: 85%"></div>
+                        <div class="bar" style="height: 50%"></div>
+                        <div class="bar" style="height: 95%"></div>
+                    </div>
+                    <div class="chart-labels">
+                        <span>Mon</span>
+                        <span>Tue</span>
+                        <span>Wed</span>
+                        <span>Thu</span>
+                        <span>Fri</span>
+                        <span>Sat</span>
+                        <span>Sun</span>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- We don't need a confirm day do we?
-         We could just make the calander a button itself?
-         -->
         <div class="widget calendar">
-            <div class="calendar-grid">
-                <p>All those days</p>
+            <h3>Calendar</h3>
+            <div class="content-box">
+                <div class="calendar-header">
+                    <div class="calendar-month">January</div>
+                    <div class="calendar-nav">
+                        <button>&lt;</button>
+                        <button>&gt;</button>
+                    </div>
+                </div>
+                <div class="calendar-grid">
+                    <!-- Calendar days would be generated dynamically -->
+                    <div class="calendar-day">8</div>
+                    <div class="calendar-day">9</div>
+                    <div class="calendar-day">10</div>
+                    <div class="calendar-day">11</div>
+                    <div class="calendar-day">12</div>
+                    <div class="calendar-day">13</div>
+                    <div class="calendar-day">14</div>
+                    <div class="calendar-day">15</div>
+                    <div class="calendar-day">16</div>
+                    <div class="calendar-day">17</div>
+                    <div class="calendar-day">18</div>
+                    <div class="calendar-day">19</div>
+                    <div class="calendar-day">20</div>
+                    <div class="calendar-day">21</div>
+                    <div class="calendar-day">22</div>
+                    <div class="calendar-day">23</div>
+                    <div class="calendar-day">24</div>
+                    <div class="calendar-day">25</div>
+                    <div class="calendar-day">26</div>
+                    <div class="calendar-day">27</div>
+                    <div class="calendar-day">28</div>
+                    <div class="calendar-day">29</div>
+                    <div class="calendar-day">30</div>
+                    <div class="calendar-day">31</div>
+                </div>
             </div>
-            <button>Confirm day</button>
+            <button class="confirm-button">Confirm day</button>
         </div>
+
         <div class="widget forecast">
             <h3>Forecast of chosen day</h3>
-            <p>4.570 visitors</p>
+            <div class="content-box forecast-box">
+                <p class="visitor-count">4.570 visitors</p>
+                <p class="forecast-note">Based on historical data and current trends</p>
+            </div>
         </div>
+        
         <div class="widget manual-link">
-            <a href="#">LINK TO MANUAL SLIDER PAGE</a>
+            <h3>Manual Controls</h3>
+            <div class="content-box link-box">
+                <a href="#" class="manual-button">LINK TO MANUAL SLIDER PAGE</a>
+            </div>
         </div>
     </div>
+
+    <script src="script.js"></script>
 </body>
 </html>
