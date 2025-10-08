@@ -9,3 +9,4 @@ Procyon is a zoo traffic prediction system for Wildlands. Using machine learning
 *  Sliders to manually change weights of events, rain etc.
 
 <img src="./img/dashboard.jpg" alt="dashboard image">
+<img src="./img/dashboard2.jpg" alt="dashboard image">
