@@ -112,6 +112,6 @@ merged_df = merged_final_df.drop(columns=["date"]) # drop date since we have yea
 
 
 merged_df.to_csv("../data/processed/processed_merge.csv", index=False) # can be used for ML now (probably)
-#final_holiday_df.to_csv("../data/processed_holidays.csv", index=False) # for visual purposes for myself, not needed for anything now, but ill keep it just in case i messed up something
+final_holiday_df.to_csv("../data/processed/processed_holidays.csv", index=False) # for visual purposes for myself, not needed for anything now, but ill keep it just in case i messed up something
 
 # training models in model_training.py
