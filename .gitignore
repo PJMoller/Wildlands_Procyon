@@ -10,4 +10,4 @@ data/database/*
 !data/database/.gitkeep
 !data/database/database_sample.db
 tests/visulization/charts/*
-!tests/visulization/charts/
+!tests/visulization/charts/.gitkeep
