@@ -9,4 +9,4 @@ data/database/*
 !data/processed/.gitkeep
 !data/database/.gitkeep
 !data/database/database_sample.db
-data/tests/visulization/charts
+tests/visulization/charts
