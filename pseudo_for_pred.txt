@@ -6,7 +6,7 @@ DATE = date from openmeteodata[first row's date]
 # API PART
 loop for all the days we want to predict - next 365 days:
     
-    try to mach current date to openmeteodata's date:
+    try to match current date to openmeteodata's date:
             drop the date part of the API
             beginning of list .append(API's data)
     except if no response or (too far or none (so no data)):
