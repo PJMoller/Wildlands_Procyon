@@ -115,7 +115,7 @@ r2 = r2_score(y_test, y_pred)
 #print(y_test.values)
 #print(y_pred)
 print(f"Elasticnet MAE: {mae}, MSE: {mse}, R2: {r2}")
-
+"""
 # SVM Support Vector Machine
 
 svm = SVR()
@@ -124,12 +124,11 @@ param_grid = {
     'C': [0.1, 1, 10],
     'gamma': [0.1, 1, 10],
     'kernel': ['linear', 'rbf']
-
 }
 
 # Grid search for hyperparameter tuning
 grid_search = GridSearchCV(estimator=svm,param_grid=param_grid,cv=5,
-                           scoring="neg_mean_absolute_error", njobs=-1, verbose=3)
+                           scoring="neg_mean_absolute_error", n_jobs=-1, verbose=3)
 
 # Fitting the model
 grid_search.fit(X_train, y_train)
@@ -146,10 +145,11 @@ r2 = r2_score(y_test, y_pred)
 #print(y_test.values)
 #print(y_pred)
 print(f"SVM MAE: {mae}, MSE: {mse}, R2: {r2}")
+#Best parameters found: {'C': 10, 'gamma': 0.1, 'kernel': 'linear'}
+#SVM MAE: 95.35585717162338, MSE: 133774.30084607404, R2: 0.07970436827713079
 
 # save the model to connect to the website later
 
-"""
 """
 # XGBoost Regressor with hyperparameter tuning
 
