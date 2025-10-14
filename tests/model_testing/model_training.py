@@ -118,7 +118,7 @@ print(f"Elasticnet MAE: {mae}, MSE: {mse}, R2: {r2}")
 
 # SVM Support Vector Machine
 
-svm = SVC()
+svm = SVR()
 
 param_grid = {
     'C': [0.1, 1, 10],
@@ -129,7 +129,7 @@ param_grid = {
 
 # Grid search for hyperparameter tuning
 grid_search = GridSearchCV(estimator=svm,param_grid=param_grid,cv=5,
-                           scoring="neg_mean_absolute_error")
+                           scoring="neg_mean_absolute_error", njobs=-1, verbose=3)
 
 # Fitting the model
 grid_search.fit(X_train, y_train)
@@ -148,6 +148,40 @@ r2 = r2_score(y_test, y_pred)
 print(f"SVM MAE: {mae}, MSE: {mse}, R2: {r2}")
 
 # save the model to connect to the website later
+
+"""
+"""
+# XGBoost Regressor with hyperparameter tuning
+
+xgb = XGBRegressor(objective="reg:squarederror", random_state=42)
+
+# Define hyperparameter grid
+param_grid = {
+    "n_estimators": [100, 200, 300],
+    "max_depth": [3, 6, 9, 12],
+    "learning_rate": [0.01, 0.1, 0.15,0.2],
+    "subsample": [0.5, 0.7, 1],
+    "colsample_bytree": [0.5,0.7, 1]
+}
+
+grid_search = GridSearchCV(xgb, param_grid, scoring="neg_mean_squared_error", cv=5, n_jobs=-1, verbose=3)
+
+grid_search.fit(X_train, y_train)
+
+best_xgb = grid_search.best_estimator_
+
+y_pred = best_xgb.predict(X_test)
+
+mae = mean_absolute_error(y_test, y_pred)
+mse = mean_squared_error(y_test, y_pred)
+r2 = r2_score(y_test, y_pred)
+#print(y_test.values)
+#print(y_pred)
+print(grid_search.best_params_)
+print(f"XGB MAE: {mae}, MSE: {mse}, R2: {r2}")
+# {'colsample_bytree': 0.7, 'learning_rate': 0.1, 'max_depth': 9, 'n_estimators': 300, 'subsample': 0.7}
+# XGB MAE: 63.529842376708984, MSE: 23052.328125, R2: 0.7946450114250183
+"""
 
 #with open("../../data/processed/model.pkl", "wb") as f:
 #    pickle.dump(model, f)
