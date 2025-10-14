@@ -31,6 +31,7 @@ def get_openmeteo():
         "forecast_days": 16 
     }
     responses = openmeteo.weather_api(url, params=params)
+    response = responses[0]
 
     # processing the location
     response = responses[0]
@@ -38,31 +39,26 @@ def get_openmeteo():
     print(f"Elevation: {response.Elevation()} m asl")
     print(f"Timezone difference to GMT+0: {response.UtcOffsetSeconds()}s")
 
-    # Process hourly data
-    hourly = response.Hourly()
-    hourly_temperature_2m = hourly.Variables(0).ValuesAsNumpy()
-    hourly_precipitation = hourly.Variables(1).ValuesAsNumpy()
-    hourly_rain = hourly.Variables(2).ValuesAsNumpy()
+    daily = response.Daily()
+    daily_data = {
+        "date": pd.date_range(
+            start = pd.to_datetime(daily.Time(), unit = "s", utc = True).date(),
+            periods = daily.Variables(0).ValuesLength(),
+            freq = "D"
+    ),
+    "temp_max": daily.Variables(0).ValuesAsNumpy(),
+    "temp_min": daily.Variables(1).ValuesAsNumpy(),
+    "precipitation": daily.Variables(2).ValuesAsNumpy()
+    }
 
-    hourly_data = {"date": pd.date_range(
-        start = pd.to_datetime(hourly.Time(), unit = "s", utc = True),
-        end = pd.to_datetime(hourly.TimeEnd(), unit = "s", utc = True),
-        freq = pd.Timedelta(seconds = hourly.Interval()),
-        inclusive = "left"
-    )}
-
-
-    hourly_data["temperature_2m"] = hourly_temperature_2m
-    hourly_data["precipitation"] = hourly_precipitation
-    hourly_data["rain"] = hourly_rain
-
-    hourly_dataframe = pd.DataFrame(data = hourly_data)
-    print("\nHourly data\n", hourly_dataframe)
+    df_weather = pd.DataFrame(daily_data)
+    df_weather["temperature_2m"] = (df_weather["temp_max"] + df_weather["temp_min"]) / 2
+    df_weather.drop(columns=["temp_max", "temp_min"], inplace=True)
+    
+    #print("\nHourly data\n", hourly_dataframe)
     #current_date = hourly_dataframe["date"].iloc[0].date()
 
-
-
-    return hourly_dataframe
+    return df_weather
     
 
 
