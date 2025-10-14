@@ -3,6 +3,7 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression, Ridge, Lasso, ElasticNet
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from sklearn.svm import SVC
 from sklearn.pipeline import Pipeline
 import pandas as pd
 import pickle
@@ -80,10 +81,10 @@ print(f"Poly MAE: {mae}, MSE: {mse}, R2: {r2}")
 
 # ElasticNet Regression
 
-model2_elastic = ElasticNet()
+model2_elastic = ElasticNet(max_iter=3000)
 
 param_grid = {
-    'alpha': [0.01,0.1,0.5,1.0,2.5,5.0],    # Overall regularization strength
+    'alpha': [0.01,0.1,0.5,1.0,2.5,5.0,10.0,100.0],    # Overall regularization strength
     'l1_ratio': [0.1,0.3,0.5,0.7,0.9,1.0]   # Balance between the L1 and L2 penalties (Lasso and Ridge)
 }
 
@@ -107,6 +108,37 @@ r2 = r2_score(y_test, y_pred)
 #print(y_test.values)
 #print(y_pred)
 print(f"Elasticnet MAE: {mae}, MSE: {mse}, R2: {r2}")
+
+# SVM Support Vector Machine
+
+svm = SVC()
+
+param_grid = {
+    'C': [0.1, 1, 10],
+    'gamma': [0.1, 1, 10],
+    'kernel': ['linear', 'rbf']
+
+}
+
+# Grid search for hyperparameter tuning
+grid_search = GridSearchCV(estimator=svm,param_grid=param_grid,cv=5,
+                           scoring="neg_mean_absolute_error")
+
+# Fitting the model
+grid_search.fit(X_train, y_train)
+
+print("Best parameters found:", grid_search.best_params_)
+
+best_model = grid_search.best_estimator_
+y_pred = best_model.predict(X_test)
+
+# Evaluating the model
+mae = mean_absolute_error(y_test, y_pred)
+mse = mean_squared_error(y_test, y_pred)
+r2 = r2_score(y_test, y_pred)
+#print(y_test.values)
+#print(y_pred)
+print(f"SVM MAE: {mae}, MSE: {mse}, R2: {r2}")
 
 # save the model to connect to the website later
 
