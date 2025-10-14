@@ -8,13 +8,20 @@ import openmeteo_requests
 import requests_cache
 from retry_requests import retry
 from datetime import date, timedelta
+import os
 
 # Loading data and models
-processed_df = pd.read_csv("data/processed/processed_merge.csv")
-model = joblib.load("data/processed/model.pkl")
-DB_FILE = "data/database/database.db"
+PROCESSED_CSV = "data/processed/processed_merge.csv"
+MODEL_PATH = "data/processed/model.pkl"
+HOLIDAYS_CSV = "data/processed/processed_holidays.csv"  # must include 'date' column
+#PROMOTIONS_XLSX = "data/promotions.xlsx"  # future use
+OUTPUT_DIR = "data/predictions/"
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+
 DATE = date.today()
-#print(DATE)
+
+#DB_FILE = "data/database/database.db"
+
 
 def get_openmeteo():
     # Open-Meteo API setup and retry if you get an error
@@ -27,51 +34,43 @@ def get_openmeteo():
     params = {
         "latitude": 52.7862,
         "longitude": 6.8917,
-        "hourly": ["temperature_2m", "precipitation", "rain"],
+        "daily": ["temperature_2m_max", "temperature_2m_min" , "precipitation_sum", "rain_sum"],
         "forecast_days": 16 
     }
     responses = openmeteo.weather_api(url, params=params)
-
-    # processing the location
     response = responses[0]
-    print(f"Coordinates: {response.Latitude()}°N {response.Longitude()}°E")
-    print(f"Elevation: {response.Elevation()} m asl")
-    print(f"Timezone difference to GMT+0: {response.UtcOffsetSeconds()}s")
+    daily = response.Daily()
 
-    # Process hourly data
-    hourly = response.Hourly()
-    hourly_temperature_2m = hourly.Variables(0).ValuesAsNumpy()
-    hourly_precipitation = hourly.Variables(1).ValuesAsNumpy()
-    hourly_rain = hourly.Variables(2).ValuesAsNumpy()
+    daily_data = {
+        "date": pd.date_range(
+            start = pd.to_datetime(daily.Time(), unit = "s", utc = True),
+            end = pd.to_datetime(daily.TimeEnd(), unit="s", utc=True),
+            freq = pd.Timedelta(seconds=daily.Interval()),
+            inclusive="left",
+        ),
+        "temp_max": daily.Variables(0).ValuesAsNumpy(),
+        "temp_min": daily.Variables(1).ValuesAsNumpy(),
+        "percipitation": daily.Variables(2).ValuesAsNumpy(),
+        "rain": daily.Variables(3).ValuesAsNumpy(),
+    }
 
-    hourly_data = {"date": pd.date_range(
-        start = pd.to_datetime(hourly.Time(), unit = "s", utc = True),
-        end = pd.to_datetime(hourly.TimeEnd(), unit = "s", utc = True),
-        freq = pd.Timedelta(seconds = hourly.Interval()),
-        inclusive = "left"
-    )}
+    df_weather = pd.DataFrame(daily_data)
+    df_weather["date"] = pd.to_datetime(df_weather["date"]).dt.tz_convert(None)
+    df_weather["temperature"] = (df_weather["temp_max"] + df_weather["temp_min"]) / 2
+    df_weather.drop(columns=["temp_max", "temp_min"], inplace=True)
+    
+    #print("\nDaily data\n", df_weather)
 
-
-    hourly_data["temperature_2m"] = hourly_temperature_2m
-    hourly_data["precipitation"] = hourly_precipitation
-    hourly_data["rain"] = hourly_rain
-
-    hourly_dataframe = pd.DataFrame(data = hourly_data)
-    print("\nHourly data\n", hourly_dataframe)
-    #current_date = hourly_dataframe["date"].iloc[0].date()
-
-
-
-    return hourly_dataframe
+    return df_weather
     
 
 
 
-def seperating():
+def seperating(processed_df):
 
     """
     for loop for looking into 3 cattegorries
-    1: api (temperature, rain, percipitation)
+    1: api (temperature, rain, precipitation)
     2: start with ticket_
     3: holiday/special day
     """
@@ -118,21 +117,124 @@ def seperating():
 
     return api, ticket, holiday
 
-def api_part():
-    current_date = DATE
-    for day in range(0,366):
-        next_day = current_date + timedelta(days=day)
-        #print(next_day)
-        #try: 
-            
+def predict_next_365_days():
+    print("loading model")
+    model = joblib.load(MODEL_PATH)
     
+    print("fetching open-meteo data")
+    openmeteo_df = get_openmeteo()
+
+    print("loading processed and holiday data")
+    processed_df = pd.read_csv(PROCESSED_CSV)
+    holidays_df = pd.read_csv(HOLIDAYS_CSV)
+    holidays_df["date"] = pd.to_datetime(holidays_df["date"]).dt.date
+    
+    api_cols, ticket_cols, holiday_cols = seperating(processed_df)
+
+    avg_weather = (
+        processed_df.groupby(["month", "day"])[["temperature", "rain", "percipitation"]]
+        .mean()
+        .reset_index()
+    )
+
+    print("starting 365 pred loop")
+    daily_rows = []
+
+    for d in range(365):
+        current_date = DATE + timedelta(days=d)
+
+        # if os.path.exists(csv_filename):
+        #     print(f"{current_date}, already predicted - skipping ")
+        #     continue
+
+        # API PART #
+        match = openmeteo_df[openmeteo_df["date"].dt.date == current_date]
+        if not match.empty:
+            temperature = match["temperature"].iloc[0]
+            rain = match["rain"].iloc[0]
+            percipitation = match["percipitation"].iloc[0]
+        else:
+            avg = avg_weather[
+                (avg_weather["month"] == current_date.month)
+                & (avg_weather["day"] == current_date.day)
+            ]
+
+            temperature = avg["temperature"].iloc[0] if not avg.empty else np.nan
+            rain = avg["rain"].iloc[0] if not avg.empty else np.nan
+            percipitation = avg["percipitation"].iloc[0] if not avg.empty else np.nan
+
+
+        # HOLIDAY PART # 
+        match_holiday = holidays_df[holidays_df["date"] == current_date]
+        if match_holiday.empty:
+            print(f"please update holidays file, cant find {current_date}")
+            break
+
+        holiday_part = match_holiday.iloc[0].to_dict()
+        holiday_part.pop("date", None)
+        holiday_part.update({
+            "year": current_date.year,
+            "month": current_date.month,
+            "day": current_date.day,
+            "weekday": current_date.weekday(),
+        })
+
+        # PROMOTION PART #
+        ##########################
+        # PROMOTION WILL BE HERE #
+        ##########################
+
+
+        # TICKET PART # 
+        ticket_part = {col: 0 for col in ticket_cols}
+        if ticket_cols:
+            ticket_part[ticket_cols[0]] = 1
+        
+        # combining features
+        row = {
+            "date": current_date,
+            "temperature": temperature,
+            "rain": rain,
+            "percipitation": percipitation
+        }
+        row.update(ticket_part)
+        row.update(holiday_part)
+
+        input_df = pd.DataFrame([row])
+        predicted_total = model.predict(input_df)[0]
+        row["predicted_people"] = predicted_total
+
+        # distribute predicted visitors over ticket types
+        active_tickets = [k for k, v in ticket_part.items() if v == 1]
+        if active_tickets:
+            per_ticket = predicted_total / len(active_tickets)
+            for t in active_tickets:
+                row[t+"_predicted"] = per_ticket
+        else:
+            for t in ticket_cols:
+                row[t+"_predicted"] = 0
+
+        daily_rows.append(row)
+
+        # Print daily summary
+        ticket_distribution = [row[t+"_predicted"] for t in ticket_cols]
+        print(f"{current_date} | Temp: {temperature:.2f}°C | Rain: {rain:.2f} | Percipitation: {percipitation:.2f} | "
+              f"Predicted People: {predicted_total:.0f} | Ticket Distribution: {ticket_distribution}")  # <-- percipitation used
+
+        # Save CSV per day (append to full file)
+        csv_filename = os.path.join(OUTPUT_DIR, f"predictions_{current_date}.csv")
+        pd.DataFrame(daily_rows).to_csv(csv_filename, index=False)
+        print(f"saved daily predictions for {current_date}")
+
+    print("all 365 days predictions complete")
 
 
 if __name__ == "__main__":
-    get_openmeteo()
-    seperating()
-    #api_part()
+    predict_next_365_days()
 
+
+
+# EVENT INFLUENCE, RUN IT WIHTOUT EVENT AND THEN WITH AND CALCULATE DIFFERENCE
 
 
 

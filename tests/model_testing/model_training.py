@@ -4,6 +4,7 @@ from sklearn.svm import SVR
 from sklearn.linear_model import LinearRegression, Ridge, Lasso, ElasticNet
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from sklearn.svm import SVC
 from sklearn.pipeline import Pipeline
 from xgboost import XGBRegressor
 import pandas as pd
@@ -87,11 +88,11 @@ print(f"Poly MAE: {mae}, MSE: {mse}, R2: {r2}")
 """
 # ElasticNet Regression
 
-model2_elastic = ElasticNet(max_iter=10000)
+model2_elastic = ElasticNet(max_iter=3000)
 
 param_grid = {
-    "alpha": [0.01,0.1,0.5,1.0,2.5,5.0],    # Overall regularization strength
-    "l1_ratio": [0.1,0.3,0.5,0.7,0.9,1.0]   # Balance between the L1 and L2 penalties (Lasso and Ridge)
+    'alpha': [0.01,0.1,0.5,1.0,2.5,5.0,10.0,100.0],    # Overall regularization strength
+    'l1_ratio': [0.1,0.3,0.5,0.7,0.9,1.0]   # Balance between the L1 and L2 penalties (Lasso and Ridge)
 }
 
 # Grid search for hyperparameter tuning
@@ -114,68 +115,37 @@ r2 = r2_score(y_test, y_pred)
 #print(y_test.values)
 #print(y_pred)
 print(f"Elasticnet MAE: {mae}, MSE: {mse}, R2: {r2}")
-# Best parameters found: {'alpha': 0.1, 'l1_ratio': 0.9}
-# Elasticnet MAE: 135.85915279338096, MSE: 66897.16193681014, R2: 0.40406608672250366
-"""
 
+# SVM Support Vector Machine
 
-svr = SVR()
-# Hyperparameter grid for SVR
+svm = SVC()
+
 param_grid = {
-    "kernel": ["rbf", "poly", "linear"],
-    "C": [0.1, 1, 10, 100, 1000],
-    "epsilon": [0.001, 0.01, 0.1, 0.2],
-    "degree": [2]  # Only relevant for poly
+    'C': [0.1, 1, 10],
+    'gamma': [0.1, 1, 10],
+    'kernel': ['linear', 'rbf']
+
 }
 
-grid_search = GridSearchCV(svr, param_grid, cv=5, n_jobs=-1, scoring="neg_mean_squared_error", verbose=1)
+# Grid search for hyperparameter tuning
+grid_search = GridSearchCV(estimator=svm,param_grid=param_grid,cv=5,
+                           scoring="neg_mean_absolute_error")
+
+# Fitting the model
 grid_search.fit(X_train, y_train)
 
-best_svr = grid_search.best_estimator_
+print("Best parameters found:", grid_search.best_params_)
 
-y_pred = best_svr.predict(X_test)
+best_model = grid_search.best_estimator_
+y_pred = best_model.predict(X_test)
 
+# Evaluating the model
 mae = mean_absolute_error(y_test, y_pred)
 mse = mean_squared_error(y_test, y_pred)
 r2 = r2_score(y_test, y_pred)
 #print(y_test.values)
 #print(y_pred)
-print(f"svr MAE: {mae}, MSE: {mse}, R2: {r2}")
-print(grid_search.best_params_)
-# svr MAE: 159.07709107967298, MSE: 126941.68810546499, R2: -0.13082311357539655
-# {'C': 1, 'degree': 2, 'epsilon': 0.01, 'kernel': 'poly'}
-"""
-# XGBoost Regressor with hyperparameter tuning
-
-xgb = XGBRegressor(objective="reg:squarederror", random_state=42)
-
-# Define hyperparameter grid
-param_grid = {
-    "n_estimators": [100, 200, 300],
-    "max_depth": [3, 6, 9, 12],
-    "learning_rate": [0.01, 0.1, 0.15,0.2],
-    "subsample": [0.5, 0.7, 1],
-    "colsample_bytree": [0.5,0.7, 1]
-}
-
-grid_search = GridSearchCV(xgb, param_grid, scoring="neg_mean_squared_error", cv=5, n_jobs=-1, verbose=1)
-
-grid_search.fit(X_train, y_train)
-
-best_xgb = grid_search.best_estimator_
-
-y_pred = best_xgb.predict(X_test)
-
-mae = mean_absolute_error(y_test, y_pred)
-mse = mean_squared_error(y_test, y_pred)
-r2 = r2_score(y_test, y_pred)
-#print(y_test.values)
-#print(y_pred)
-print(grid_search.best_params_)
-print(f"XGB MAE: {mae}, MSE: {mse}, R2: {r2}")
-# {'colsample_bytree': 0.7, 'learning_rate': 0.1, 'max_depth': 9, 'n_estimators': 300, 'subsample': 0.7}
-# XGB MAE: 63.529842376708984, MSE: 23052.328125, R2: 0.7946450114250183
-"""
+print(f"SVM MAE: {mae}, MSE: {mse}, R2: {r2}")
 
 # save the model to connect to the website later
 
