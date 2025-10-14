@@ -1,7 +1,8 @@
 # pip install openpyxl!!!
 import pandas as pd
+from sklearn.preprocessing import StandardScaler
 
-visitor_og_df = pd.read_csv("../data/raw/visitordaily_sample.csv", sep=";")
+visitor_og_df = pd.read_csv("../data/raw/visitordaily.csv", sep=";")
 #print(visitor_og_df.head())
 #print(visitor_og_df.dtypes) # date is object weird
 #print(visitor_og_df.describe())
@@ -52,7 +53,7 @@ visitor_og_df[bool_cols] = visitor_og_df[bool_cols].astype(int) # since true = 1
 
 # changes to weather df
 
-weather_og_df.columns = ["date", "temperature", "rain", "percipitation", "hour"] # rename columns
+weather_og_df.columns = ["date", "temperature", "rain", "precipitation", "hour"] # rename columns
 weather_og_df = weather_og_df.drop("hour", axis=1)
 #print(holiday_og_df.head(20))
 
@@ -84,7 +85,7 @@ final_holiday_df = result_df.groupby("date").max().reset_index()
 bool_cols = final_holiday_df.columns.drop("date")
 final_holiday_df[bool_cols] = final_holiday_df[bool_cols].astype(int) # since true = 1 and false = 0 its easy to convert like this
 
-# Now final_holiday_df can be used for merging, one hot encoded
+# Now final_holiday_df can be used for merging, binary or w.e encoded
 
 
 
@@ -104,7 +105,10 @@ merged_final_df["weekday"] = merged_final_df["date"].dt.weekday
 
 merged_df = merged_final_df.drop(columns=["date"]) # drop date since we have year month day now
 
-
+# use standard scaling just in case its better for the models
+scaler = StandardScaler()
+num_cols = ["temperature", "rain", "precipitation"]
+merged_df[num_cols] = scaler.fit_transform(merged_df[num_cols])
 
 # tests
 
