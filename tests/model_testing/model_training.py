@@ -81,7 +81,7 @@ print(f"Poly MAE: {mae}, MSE: {mse}, R2: {r2}")
 
 # ElasticNet Regression
 
-model2_elastic = ElasticNet()
+model2_elastic = ElasticNet(max_iter=3000)
 
 param_grid = {
     'alpha': [0.01,0.1,0.5,1.0,2.5,5.0,10.0,100.0],    # Overall regularization strength
