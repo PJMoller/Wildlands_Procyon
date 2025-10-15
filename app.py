@@ -147,6 +147,7 @@ def predict_next_365_days():
         #     print(f"{current_date}, already predicted - skipping ")
         #     continue
 
+        print("starting api part")
         # API PART #
         match = openmeteo_df[openmeteo_df["date"].dt.date == current_date]
         if not match.empty:
@@ -162,9 +163,10 @@ def predict_next_365_days():
             temperature = avg["temperature"].iloc[0] if not avg.empty else np.nan
             rain = avg["rain"].iloc[0] if not avg.empty else np.nan
             percipitation = avg["percipitation"].iloc[0] if not avg.empty else np.nan
-
+        print("finished api part")
 
         # HOLIDAY PART # 
+        print("starting holiday part")
         match_holiday = holidays_df[holidays_df["date"] == current_date]
         if match_holiday.empty:
             print(f"please update holidays file, cant find {current_date}")
@@ -179,16 +181,28 @@ def predict_next_365_days():
             "weekday": current_date.weekday(),
         })
 
+        print("finished holiday part")
         # PROMOTION PART #
         ##########################
         # PROMOTION WILL BE HERE #
         ##########################
 
 
+        # EVENT PART #
+        ######################
+        # EVENT WILL BE HERE #
+        # EVENT INFLUENCE, RUN IT WIHTOUT EVENT AND THEN WITH AND CALCULATE DIFFERENCE
+        ######################
+        
+
+
         # TICKET PART # 
+        print("starting ticket part")
         ticket_part = {col: 0 for col in ticket_cols}
         if ticket_cols:
             ticket_part[ticket_cols[0]] = 1
+
+        print("finished ticket part")
         
         # combining features
         row = {
@@ -200,9 +214,20 @@ def predict_next_365_days():
         row.update(ticket_part)
         row.update(holiday_part)
 
+        print("combined features")
+
         input_df = pd.DataFrame([row])
+        
+        if hasattr(model, "feature_names_in_"):
+            expected_features = model.feature_names_in_
+            input_df = input_df[[c for c in input_df.columns if c in expected_features]]
+        else:
+            print("model does not sure feature names, skipping them")
+
         predicted_total = model.predict(input_df)[0]
         row["predicted_people"] = predicted_total
+
+        print("made the predicted total")
 
         # distribute predicted visitors over ticket types
         active_tickets = [k for k, v in ticket_part.items() if v == 1]
@@ -216,14 +241,19 @@ def predict_next_365_days():
 
         daily_rows.append(row)
 
+        print("distributed the visitors over the ticket parts")
+
         # Print daily summary
         ticket_distribution = [row[t+"_predicted"] for t in ticket_cols]
         print(f"{current_date} | Temp: {temperature:.2f}°C | Rain: {rain:.2f} | Percipitation: {percipitation:.2f} | "
-              f"Predicted People: {predicted_total:.0f} | Ticket Distribution: {ticket_distribution}")  # <-- percipitation used
+              f"Predicted People: {predicted_total:.0f} | Ticket Distribution: {ticket_distribution}") 
+        
+        print("printed succesfully")
 
         # Save CSV per day (append to full file)
         csv_filename = os.path.join(OUTPUT_DIR, f"predictions_{current_date}.csv")
         pd.DataFrame(daily_rows).to_csv(csv_filename, index=False)
+
         print(f"saved daily predictions for {current_date}")
 
     print("all 365 days predictions complete")
@@ -235,77 +265,3 @@ if __name__ == "__main__":
 
 
 # EVENT INFLUENCE, RUN IT WIHTOUT EVENT AND THEN WITH AND CALCULATE DIFFERENCE
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# # Helper: get DB connection
-# def get_db_connection():
-#     conn = sqlite3.connect(DB_FILE)
-#     conn.row_factory = sqlite3.Row
-#     return conn
-
-# # Route: predict for chosen day
-# @app.route("/api/predict", methods=["POST"])
-# def predict():
-#     try:
-#         data = request.get_json()
-#         features = np.array(data["features"]).reshape(1, -1)
-#         prediction = model.predict(features)
-
-#         # Save to DB
-#         conn = get_db_connection()
-#         conn.execute(
-#             "INSERT INTO predictions (features, result, date, timestamp) VALUES (?, ?, ?, ?)",
-#             (str(data["features"]), str(prediction.tolist()), data.get("date", None), datetime.now().isoformat())
-#         )
-#         conn.commit()
-#         conn.close()
-
-#         return jsonify({"result": prediction.tolist()})
-#     except Exception as e:
-#         return jsonify({"error": str(e)}), 400
-
-# # Route: get latest prediction
-# @app.route("/api/latest", methods=["GET"])
-# def latest():
-#     conn = get_db_connection()
-#     row = conn.execute("SELECT * FROM predictions ORDER BY id DESC LIMIT 1").fetchone()
-#     conn.close()
-#     if row:
-#         return jsonify({
-#             "features": row["features"],
-#             "result": row["result"],
-#             "date": row["date"],
-#             "timestamp": row["timestamp"]
-#         })
-#     return jsonify({})
-
-# # Route: get all predictions
-# @app.route("/api/history", methods=["GET"])
-# def history():
-#     conn = get_db_connection()
-#     rows = conn.execute("SELECT * FROM predictions ORDER BY id ASC").fetchall()
-#     conn.close()
-#     results = [{"features": r["features"], "result": r["result"], "date": r["date"], "timestamp": r["timestamp"]} for r in rows]
-#     return jsonify(results)
-
-# if __name__ == "__main__":
-#     app.run(host="0.0.0.0", port=5000, debug=True)
