@@ -89,7 +89,7 @@ def seperating(processed_df):
         if col == "temperature" or col == "rain" or col == "percipitation":
             #print("API")
             api.append(col)
-        elif col.startswith("ticket_"):
+        elif col.startswith("ticket_") and col != "ticket_num":
             #print("ticket_")
             ticket.append(col)
         else:
@@ -205,22 +205,31 @@ def predict_next_365_days():
         print("finished ticket part")
         
         # combining features
-        row = {
+        base_row = {
             "date": current_date,
             "temperature": temperature,
             "rain": rain,
             "percipitation": percipitation
         }
-        row.update(ticket_part)
-        row.update(holiday_part)
+        base_row.update(holiday_part)
 
         print("combined features")
 
+        # linking each ticket type using bitshifting
+        for i, ticket_name in enumerate(ticket_cols):
+            ticket_part = {col:0 for col in ticket_cols}
+            ticket_part[ticket_name] = 1
+
+            row = {**base_row, **ticket_part}
+
         input_df = pd.DataFrame([row])
         
+        print("linked ticket type using bitshifting")
+
+        # if column does not exist, ignore it
         if hasattr(model, "feature_names_in_"):
             expected_features = model.feature_names_in_
-            input_df = input_df[[c for c in input_df.columns if c in expected_features]]
+            input_df = input_df.reindex(columns=expected_features, fill_value=0)
         else:
             print("model does not sure feature names, skipping them")
 
@@ -244,10 +253,12 @@ def predict_next_365_days():
         print("distributed the visitors over the ticket parts")
 
         # Print daily summary
-        ticket_distribution = [row[t+"_predicted"] for t in ticket_cols]
+        ticket_distribution = {t:row.get(t+"_predicted", 0) for t in ticket_cols}
+        
         print(f"{current_date} | Temp: {temperature:.2f}°C | Rain: {rain:.2f} | Percipitation: {percipitation:.2f} | "
               f"Predicted People: {predicted_total:.0f} | Ticket Distribution: {ticket_distribution}") 
-        
+    
+
         print("printed succesfully")
 
         # Save CSV per day (append to full file)
