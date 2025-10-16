@@ -17,6 +17,11 @@ holiday_og_df = pd.read_excel("../data/raw/Holidays 2023-2026 Netherlands and Ge
 #print(holiday_og_df.dtypes)
 #print(holiday_og_df.describe())
 
+camp_og_df = pd.read_excel("../data/raw/campaings.xlsx")
+print(camp_og_df.head())
+#print(camp_og_df.dtypes)
+#print(camp_og_df.describe())
+
 
 
 # checks for basic analysis
@@ -88,6 +93,10 @@ final_holiday_df[bool_cols] = final_holiday_df[bool_cols].astype(int) # since tr
 # Now final_holiday_df can be used for merging, binary or w.e encoded
 
 
+# changes to campaign df
+camp_og_df.columns = ["year", "week", "promo_NLNoord", "promo_NLMidden", "promo_NLZuid", "promo_Nordrhein-Westfalen", "promo_Niedersachsen"] # rename columns
+
+
 
 # merge the 3 datasets, #1 weather + hourly, #2 add holidays
 
@@ -100,8 +109,11 @@ merged_final_df = pd.merge(merged_wh_df, final_holiday_df, on="date", how="inner
 
 merged_final_df["year"] = merged_final_df["date"].dt.year
 merged_final_df["month"] = merged_final_df["date"].dt.month
+merged_final_df["week"] = merged_final_df["date"].dt.isocalendar().week
 merged_final_df["day"] = merged_final_df["date"].dt.day
 merged_final_df["weekday"] = merged_final_df["date"].dt.weekday
+
+merged_final_df = pd.merge(merged_final_df, camp_og_df, on=["year", "week"], how="left")
 
 merged_df = merged_final_df.drop(columns=["date"]) # drop date since we have year month day now
 
@@ -112,10 +124,10 @@ merged_df[num_cols] = scaler.fit_transform(merged_df[num_cols])
 
 # tests
 
-#print(merged_df.head(20)) # everything looks good
+print(merged_df.head(20)) # everything looks good
 
 
 merged_df.to_csv("../data/processed/processed_merge.csv", index=False) # can be used for ML now (probably)
-final_holiday_df.to_csv("../data/processed/processed_holidays.csv", index=False) # for visual purposes for myself, not needed for anything now, but ill keep it just in case i messed up something
+#final_holiday_df.to_csv("../data/processed/processed_holidays.csv", index=False) # for visual purposes for myself, not needed for anything now, but ill keep it just in case i messed up something
 
 # training models in model_training.py
