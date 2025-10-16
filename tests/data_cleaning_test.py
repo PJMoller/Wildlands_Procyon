@@ -17,6 +17,11 @@ holiday_og_df = pd.read_excel("../data/raw/Holidays 2023-2026 Netherlands and Ge
 #print(holiday_og_df.dtypes)
 #print(holiday_og_df.describe())
 
+camp_og_df = pd.read_excel("../data/raw/campaigns.xlsx")
+print(camp_og_df.head())
+print(camp_og_df.dtypes)
+print(camp_og_df.describe())
+
 
 
 # checks for basic analysis
@@ -88,6 +93,10 @@ final_holiday_df[bool_cols] = final_holiday_df[bool_cols].astype(int) # since tr
 # Now final_holiday_df can be used for merging, binary or w.e encoded
 
 
+# changes to campaign df
+
+
+
 
 # merge the 3 datasets, #1 weather + hourly, #2 add holidays
 
@@ -115,7 +124,7 @@ merged_df[num_cols] = scaler.fit_transform(merged_df[num_cols])
 #print(merged_df.head(20)) # everything looks good
 
 
-merged_df.to_csv("../data/processed/processed_merge.csv", index=False) # can be used for ML now (probably)
-final_holiday_df.to_csv("../data/processed/processed_holidays.csv", index=False) # for visual purposes for myself, not needed for anything now, but ill keep it just in case i messed up something
+#merged_df.to_csv("../data/processed/processed_merge.csv", index=False) # can be used for ML now (probably)
+#final_holiday_df.to_csv("../data/processed/processed_holidays.csv", index=False) # for visual purposes for myself, not needed for anything now, but ill keep it just in case i messed up something
 
 # training models in model_training.py

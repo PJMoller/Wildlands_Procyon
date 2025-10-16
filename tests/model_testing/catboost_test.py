@@ -96,12 +96,11 @@ test_pool = Pool(data=X_test, label=y_test, cat_features=categorical_features)
 # Define parameter grid for hyperparameter tuning
 param_grid = {
     'iterations': [500, 1000],
-    'depth': [6,8],
-    'learning_rate': [0.0,1, 0.03, 0.05],
-    'l2_leaf_reg': [3, 7, 10],
-    'bagging_temperature': [0.5, 1, 2],
+    'depth': [4, 6],
+    'learning_rate': [0.01, 0.02, 0.03],
+    'l2_leaf_reg': [5, 7, 10],
+    'bagging_temperature': [1, 2],
     'random_strength': [1, 2],
-    "early_stopping_rounds": [50, 100]
 }
 
 # Initialize CatBoostRegressor without early stopping (since GridSearchCV uses CV)
@@ -110,8 +109,6 @@ model = CatBoostRegressor(cat_features=categorical_features, eval_metric='MAE', 
 # Setup GridSearchCV
 grid_search = GridSearchCV(model, param_grid, scoring='neg_mean_absolute_error', cv=5, n_jobs=-1, verbose=100)
 
-# Fit grid search on raw training data (X_train, y_train)
-# Make sure categorical features are still strings or ints – no need for Pool here
 grid_search.fit(X_train, y_train)
 
 # Retrieve best model
@@ -130,29 +127,24 @@ print(f"MAE: {mae:.4f}, MSE: {mse:.4f}, R2: {r2:.4f}")
 # Best hyperparameters: {'depth': 8, 'iterations': 1500, 'l2_leaf_reg': 3, 'learning_rate': 0.05}
 # MAE: 66.6876, MSE: 25235.6306, R2: 0.7752
 
-#Best hyperparameters: {'bagging_temperature': 0.3, 'depth': 10, 'early_stopping_rounds': 50, 'iterations': 1500, 'l2_leaf_reg': 3, 'learning_rate': 0.03, 'random_strength': 2}
-#MAE: 72.6952, MSE: 32054.3476, R2: 0.7145
+# Best hyperparameters: {'bagging_temperature': 0.3, 'depth': 10, 'early_stopping_rounds': 50, 'iterations': 1500, 'l2_leaf_reg': 3, 'learning_rate': 0.03, 'random_strength': 2}
+# MAE: 72.6952, MSE: 32054.3476, R2: 0.7145
 
-# 1. Feature importance from best model
 feature_importances = best_model.get_feature_importance(prettified=True)
 print("Feature Importances:\n", feature_importances)
 
-# 2. Repeated k-fold cross-validation for MAE stability check
 tss = TimeSeriesSplit(n_splits=5)
 cv_mae_scores = -cross_val_score(best_model, X, y, scoring='neg_mean_absolute_error', cv=tss, n_jobs=-1)
 print(f"temporal CV MAE Mean: {np.mean(cv_mae_scores):.4f}, Std: {np.std(cv_mae_scores):.4f}")
 
-# 3. Train vs Test error comparison to check overfitting
 best_model.fit(X_train, y_train)
 y_train_pred = best_model.predict(X_train)
 train_mae = mean_absolute_error(y_train, y_train_pred)
 print(f"Train MAE: {train_mae:.4f}, Test MAE: {mae:.4f}")
 
-# 4. SHAP values to explain feature effects (for a sample set)
 explainer = shap.TreeExplainer(best_model)
 shap_values = explainer.shap_values(X_test)
 
-# Print top 5 most important features by mean absolute SHAP value
 mean_abs_shap = np.abs(shap_values).mean(axis=0)
 top_indices = mean_abs_shap.argsort()[-10:][::-1]
 top_features = X_test.columns[top_indices]
