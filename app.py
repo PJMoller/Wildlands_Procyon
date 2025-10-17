@@ -50,16 +50,24 @@ def get_openmeteo():
         ),
         "temp_max": daily.Variables(0).ValuesAsNumpy(),
         "temp_min": daily.Variables(1).ValuesAsNumpy(),
-        "percipitation": daily.Variables(2).ValuesAsNumpy(),
+        "precipitation": daily.Variables(2).ValuesAsNumpy(),
         "rain": daily.Variables(3).ValuesAsNumpy(),
     }
 
     df_weather = pd.DataFrame(daily_data)
+
+    # Convert everything to float64 and round numerically
+    df_weather["temperature"] = ((df_weather["temp_max"] + df_weather["temp_min"]) / 2).astype("float64").round(1)
+    df_weather["precipitation"] = df_weather["precipitation"].astype("float64").round(1)
+    df_weather["rain"] = df_weather["rain"].astype("float64").round(1)
+
     df_weather["date"] = pd.to_datetime(df_weather["date"]).dt.tz_convert(None)
-    df_weather["temperature"] = (df_weather["temp_max"] + df_weather["temp_min"]) / 2
     df_weather.drop(columns=["temp_max", "temp_min"], inplace=True)
     
     #print("\nDaily data\n", df_weather)
+
+    # Round all relevant columns to one decimal
+    pd.options.display.float_format = "{:.1f}".format
 
     return df_weather
     
@@ -86,7 +94,7 @@ def seperating(processed_df):
     for col in processed_df.columns:
         #print(col)
 
-        if col == "temperature" or col == "rain" or col == "percipitation":
+        if col == "temperature" or col == "rain" or col == "precipitation":
             #print("API")
             api.append(col)
         elif col.startswith("ticket_") and col != "ticket_num":
@@ -131,14 +139,32 @@ def predict_next_365_days():
     
     api_cols, ticket_cols, holiday_cols = seperating(processed_df)
 
+    if "date" not in processed_df.columns:
+        if {"year", "month", "day"}.issubset(processed_df.columns):
+            processed_df["date"] = pd.to_datetime(processed_df[["year", "month", "day"]])
+        elif {"year", "week"}.issubset(processed_df.columns):
+            processed_df["date"] = processed_df.apply(
+                lambda r: pd.to_datetime(f"{int(r['year'])}-W{int(r['week']):02d}-1", format="%G-W%V-%u"),
+                axis=1
+            )
+        else:
+            raise KeyError("No suitable columns found for 'date'.")
+
+    processed_df["year"] = processed_df["date"].dt.year
+    processed_df["month"] = processed_df["date"].dt.month
+    processed_df["week"] = processed_df["date"].dt.isocalendar().week
+    processed_df["day"] = processed_df["date"].dt.day
+    processed_df["weekday"] = processed_df["date"].dt.weekday
+
+
     avg_weather = (
-        processed_df.groupby(["month", "day"])[["temperature", "rain", "percipitation"]]
+        processed_df.groupby(["month", "day"])[["temperature", "rain", "precipitation"]]
         .mean()
         .reset_index()
     )
 
     print("starting 365 pred loop")
-    daily_rows = []
+    all_days_rows = []
 
     for d in range(365):
         current_date = DATE + timedelta(days=d)
@@ -147,29 +173,26 @@ def predict_next_365_days():
         #     print(f"{current_date}, already predicted - skipping ")
         #     continue
 
-        print("starting api part")
+        #print("starting api part")
         # API PART #
         match = openmeteo_df[openmeteo_df["date"].dt.date == current_date]
         if not match.empty:
             temperature = match["temperature"].iloc[0]
             rain = match["rain"].iloc[0]
-            percipitation = match["percipitation"].iloc[0]
+            precipitation = match["precipitation"].iloc[0]
         else:
-            avg = avg_weather[
-                (avg_weather["month"] == current_date.month)
-                & (avg_weather["day"] == current_date.day)
-            ]
-
+            avg = avg_weather[(avg_weather["month"] == current_date.month)
+                & (avg_weather["day"] == current_date.day)]
             temperature = avg["temperature"].iloc[0] if not avg.empty else np.nan
             rain = avg["rain"].iloc[0] if not avg.empty else np.nan
-            percipitation = avg["percipitation"].iloc[0] if not avg.empty else np.nan
-        print("finished api part")
+            precipitation = avg["precipitation"].iloc[0] if not avg.empty else np.nan
+        #print("finished api part")
 
         # HOLIDAY PART # 
-        print("starting holiday part")
+        #print("starting holiday part")
         match_holiday = holidays_df[holidays_df["date"] == current_date]
         if match_holiday.empty:
-            print(f"please update holidays file, cant find {current_date}")
+            #print(f"please update holidays file, cant find {current_date}")
             break
 
         holiday_part = match_holiday.iloc[0].to_dict()
@@ -181,7 +204,7 @@ def predict_next_365_days():
             "weekday": current_date.weekday(),
         })
 
-        print("finished holiday part")
+        #print("finished holiday part")
         # PROMOTION PART #
         ##########################
         # PROMOTION WILL BE HERE #
@@ -197,75 +220,79 @@ def predict_next_365_days():
 
 
         # TICKET PART # 
-        print("starting ticket part")
-        ticket_part = {col: 0 for col in ticket_cols}
-        if ticket_cols:
-            ticket_part[ticket_cols[0]] = 1
-
-        print("finished ticket part")
-        
-        # combining features
-        base_row = {
-            "date": current_date,
-            "temperature": temperature,
-            "rain": rain,
-            "percipitation": percipitation
-        }
-        base_row.update(holiday_part)
-
-        print("combined features")
-
-        # linking each ticket type using bitshifting
-        for i, ticket_name in enumerate(ticket_cols):
-            ticket_part = {col:0 for col in ticket_cols}
+        #print("starting ticket part")
+        predictions_per_ticket = {}
+        for ticket_name in ticket_cols:
+            ticket_part = {col: 0 for col in ticket_cols}
             ticket_part[ticket_name] = 1
 
-            row = {**base_row, **ticket_part}
+            #print("finished ticket part")
+            
+            # combining features
+            row = {
+                "temperature": temperature,
+                "rain": rain,
+                "precipitation": precipitation,
+                **holiday_part,
+                **ticket_part
+            }
 
-        input_df = pd.DataFrame([row])
+            input_df = pd.DataFrame([row])
+
+            #print("combined features")
+
+            # if column does not exist, ignore it
+            if hasattr(model, "feature_names_in_"):
+                expected_features = model.feature_names_in_
+                input_df = input_df.reindex(columns=expected_features, fill_value=0)
+            #else:
+                #print("model does not sure feature names, skipping them")
+
+            predicted_total = model.predict(input_df)[0]
+            predictions_per_ticket[ticket_name] = predicted_total
+
+        total_visitors = sum(predictions_per_ticket.values())
+
+        daily_summary = {
+            "date": current_date,
+            "year": current_date.year,
+            "month": current_date.month,
+            "week": current_date.isocalendar().week,
+            "day": current_date.day,
+            "weekday": current_date.weekday(),
+            "temperature": round(temperature, 1),
+            "rain": round(rain, 1),
+            "precipitation": round(precipitation, 1),
+            "total_visitors": round(total_visitors, 0),
+            **predictions_per_ticket,
+            **holiday_part  # Include holiday columns for display on dashboard
+        }
+
+        all_days_rows.append(daily_summary)
         
-        print("linked ticket type using bitshifting")
+        #print("linked ticket type using bitshifting")
 
-        # if column does not exist, ignore it
-        if hasattr(model, "feature_names_in_"):
-            expected_features = model.feature_names_in_
-            input_df = input_df.reindex(columns=expected_features, fill_value=0)
-        else:
-            print("model does not sure feature names, skipping them")
 
-        predicted_total = model.predict(input_df)[0]
-        row["predicted_people"] = predicted_total
+        print(
+            f"{current_date} | Temp: {temperature:.2f}°C | Rain: {rain:.2f} | "
+            f"Precipitation: {precipitation:.2f} | Total Visitors: {total_visitors:.0f}"
+        )
 
-        print("made the predicted total")
-
-        # distribute predicted visitors over ticket types
-        active_tickets = [k for k, v in ticket_part.items() if v == 1]
-        if active_tickets:
-            per_ticket = predicted_total / len(active_tickets)
-            for t in active_tickets:
-                row[t+"_predicted"] = per_ticket
-        else:
-            for t in ticket_cols:
-                row[t+"_predicted"] = 0
-
-        daily_rows.append(row)
-
-        print("distributed the visitors over the ticket parts")
+        # Round all relevant columns to one decimal
+        pd.options.display.float_format = "{:.1f}".format
+        #print("made the predicted total")
 
         # Print daily summary
         ticket_distribution = {t:row.get(t+"_predicted", 0) for t in ticket_cols}
         
-        print(f"{current_date} | Temp: {temperature:.2f}°C | Rain: {rain:.2f} | Percipitation: {percipitation:.2f} | "
-              f"Predicted People: {predicted_total:.0f} | Ticket Distribution: {ticket_distribution}") 
-    
 
-        print("printed succesfully")
+
+        #print("printed succesfully")
 
         # Save CSV per day (append to full file)
-        csv_filename = os.path.join(OUTPUT_DIR, f"predictions_{current_date}.csv")
-        pd.DataFrame(daily_rows).to_csv(csv_filename, index=False)
-
-        print(f"saved daily predictions for {current_date}")
+    csv_filename = os.path.join(OUTPUT_DIR, f"predictions_{current_date}.csv")
+    pd.DataFrame(all_days_rows).to_csv(csv_filename, index=False, float_format="%.1f")
+        #print(f"saved daily predictions for {current_date}")
 
     print("all 365 days predictions complete")
 
