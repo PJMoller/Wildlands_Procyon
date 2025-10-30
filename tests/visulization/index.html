@@ -4,28 +4,36 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Wildlands Dashboard</title>
-    <link rel="stylesheet" href="../css/style.css">
+
+    <!-- ✅ Corrected CSS linking -->
+    <link rel="stylesheet" href="./css/style.css">
+
+    <!-- Optional favicon -->
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
 </head>
 <body>
     <div class="container">
+        <!-- Current day -->
         <div class="widget current-day">
             <h3>Current day</h3>
             <div class="content-box">
                 <p>Wednesday, Oct 1</p>
                 <p>No event</p>
-                <p class="visitor-count">3.900 Visitors</p>
+                <p class="visitor-count">3,900 Visitors</p>
             </div>
         </div>
         
+        <!-- Tomorrow -->
         <div class="widget tomorrow">
             <h3>Tomorrow</h3>
             <div class="content-box">
                 <p>Thursday, Oct 2</p>
                 <p>No event</p>
-                <p class="visitor-count">5.705 Visitors</p>
+                <p class="visitor-count">5,705 Visitors</p>
             </div>
         </div>
         
+        <!-- Events -->
         <div class="widget events">
             <h3>Events (Impact)</h3>
             <div class="event good">
@@ -44,39 +52,29 @@
             </div>
         </div>
 
+        <!-- Expected Attendance (chart) -->
         <div class="widget attendance-chart">
             <h3>Expected Attendance</h3>
             <div class="content-box">
-                <div class="chart-options">
-                    <button class="active">Day</button>
-                    <button>Week</button>
-                    <button>Month</button>
-                    <button>Year</button>
+                <div class="chart-controls">
+                    <label for="start-date">Start date:</label>
+                    <input type="date" id="start-date" value="2017-10-01">
                 </div>
-                <div class="chart-area">
-                    <!-- Simple bar chart representation -->
-                    <div class="chart-bars">
-                        <div class="bar" style="height: 80%"></div>
-                        <div class="bar" style="height: 60%"></div>
-                        <div class="bar" style="height: 90%"></div>
-                        <div class="bar" style="height: 70%"></div>
-                        <div class="bar" style="height: 85%"></div>
-                        <div class="bar" style="height: 50%"></div>
-                        <div class="bar" style="height: 95%"></div>
-                    </div>
-                    <div class="chart-labels">
-                        <span>Mon</span>
-                        <span>Tue</span>
-                        <span>Wed</span>
-                        <span>Thu</span>
-                        <span>Fri</span>
-                        <span>Sat</span>
-                        <span>Sun</span>
-                    </div>
+
+                <div class="chart-options">
+                    <button data-period="week" class="active">Week</button>
+                    <button data-period="month">Month</button>
+                    <button data-period="year">Year</button>
+                </div>
+
+                <!-- Chart Container -->
+                <div class="chart-area" id="chart-area">
+                    <p class="chart-placeholder">Loading chart...</p>
                 </div>
             </div>
         </div>
 
+        <!-- Calendar -->
         <div class="widget calendar">
             <h3>Calendar</h3>
             <div class="content-box">
@@ -88,7 +86,7 @@
                     </div>
                 </div>
                 <div class="calendar-grid">
-                    <!-- Calendar days would be generated dynamically -->
+                    <!-- Calendar days -->
                     <div class="calendar-day">8</div>
                     <div class="calendar-day">9</div>
                     <div class="calendar-day">10</div>
@@ -118,22 +116,24 @@
             <button class="confirm-button">Confirm day</button>
         </div>
 
+        <!-- Forecast -->
         <div class="widget forecast">
             <h3>Forecast of chosen day</h3>
             <div class="content-box forecast-box">
-                <p class="visitor-count">4.570 visitors</p>
+                <p class="visitor-count">4,570 visitors</p>
                 <p class="forecast-note">Based on historical data and current trends</p>
             </div>
         </div>
         
+        <!-- Manual Link -->
         <div class="widget manual-link">
             <h3>Manual Controls</h3>
             <div class="content-box link-box">
-                <a href="Slider.html" class="manual-button">Slider Page</a>
+                <a href="#" class="manual-button">LINK TO MANUAL SLIDER PAGE</a>
             </div>
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <script src="./script.js"></script>
 </body>
-</html> 
+</html>

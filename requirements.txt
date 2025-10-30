@@ -1,11 +1,8 @@
 flask
 pandas
-pickle
 numpy
-sqlite3
-datetime
 joblib
-sklearn
+scikit-learn
 openmeteo-requests
 requests-cache
 retry-requests

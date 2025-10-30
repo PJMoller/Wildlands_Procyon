@@ -53,14 +53,6 @@ document.addEventListener('DOMContentLoaded', function() {
             alert('Please select a day first!');
         }
     });
-    
-    // Manual link
-    const manualLink = document.querySelector('.manual-button');
-    manualLink.addEventListener('click', function(e) {
-        e.preventDefault();
-        alert('Redirecting to manual slider page...');
-        // In a real application, this would navigate to the actual page
-    });
 });
 
 function updateForecast(day) {

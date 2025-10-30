@@ -1,56 +1,369 @@
-body {
-    background-color: #1a1a1a;
-    color: #f0f0f0;
-    font-family: sans-serif;
+:root {
+    --bg-dark: #1a1a1a;
+    --bg-widget: #2b2b2b;
+    --bg-event: #3a3a3a;
+    --bg-content: #3a3a3a;
+    --text-light: #f0f0f0;
+    --text-secondary: #a0a0a0;
+    --accent-green: #4CAF50;
+    --accent-red: #F44336;
+    --accent-blue: #2196F3;
+    --border-radius: 8px;
 }
 
-/* We will need to adjust it, just a quick template we could look into
-media frames or flex box so it's responsive to the users screen.
-*/
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: var(--bg-dark);
+    color: var(--text-light);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.5;
+    padding: 20px;
+}
+
 .container {
     display: grid;
-    grid-template-columns: repeat(3, 1fr); /* Three equal columns */
-    gap: 20px; /* Space between containers */
-    padding: 20px;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: auto auto auto;
+    gap: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
 }
 
 .widget {
-    background-color: #2b2b2b;
-    border-radius: 10px;
+    background-color: var(--bg-widget);
+    border-radius: var(--border-radius);
     padding: 20px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
-.events, .attendance-chart, .calendar {
-    grid-column: span 1; /* This way they can be wider*/
+.current-day {
+    grid-column: 1 / 2;
+    grid-row: 1 / 2;
 }
 
-/* The smaller type of containers */
-.outer-wrapper {
-    background-color: #31313b;
-    border-radius: 10px;
-    display: flex;
-    justify-content: space-around;
-    padding: 25px;
+.tomorrow {
+    grid-column: 2 / 3;
+    grid-row: 1 / 2;
 }
 
-/* The widgets */
-/* It's not perfect yet we need to adjust some things */
 .events {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+    grid-column: 3 / 5;
+    grid-row: 1 / 2;
 }
 
+.attendance-chart {
+    grid-column: 1 / 3;
+    grid-row: 2 / 3;
+}
+
+.calendar {
+    grid-column: 3 / 5;
+    grid-row: 2 / 3;
+}
+
+.forecast {
+    grid-column: 1 / 3;
+    grid-row: 3 / 4;
+}
+
+.manual-link {
+    grid-column: 3 / 5;
+    grid-row: 3 / 4;
+}
+
+h3 {
+    margin-bottom: 15px;
+    font-size: 1.2rem;
+    color: var(--text-secondary);
+}
+
+/* Content boxes - the grey boxes inside containers */
+.content-box {
+    background-color: var(--bg-content);
+    border-radius: var(--border-radius);
+    padding: 15px;
+    margin-top: 10px;
+}
+
+.current-day .content-box, .tomorrow .content-box {
+    text-align: center;
+}
+
+.current-day h3, .tomorrow h3 {
+    color: var(--text-light);
+    font-size: 1.1rem;
+}
+
+.current-day p, .tomorrow p {
+    margin-bottom: 8px;
+}
+
+.visitor-count {
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin-top: 10px;
+    color: var(--text-light);
+}
+
+/* Events styling */
 .event {
-    background-color: #3a3a3a;
-    border-radius: 5px;
-    padding: 10px;
+    background-color: var(--bg-content);
+    border-radius: var(--border-radius);
+    padding: 15px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
 }
 
 .event.good {
-    border-left: 5px solid #4CAF50;
+    border-left: 4px solid var(--accent-green);
 }
 
 .event.bad {
-    border-left: 5px solid #F44336;
+    border-left: 4px solid var(--accent-red);
+}
+
+.event-status {
+    font-weight: bold;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    white-space: nowrap;
+}
+
+.good .event-status {
+    background-color: var(--accent-green);
+    color: white;
+}
+
+.bad .event-status {
+    background-color: var(--accent-red);
+    color: white;
+}
+
+.event-content {
+    flex: 1;
+}
+
+.event-title {
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: var(--text-light);
+}
+
+.event-description {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+/* Chart styling */
+.chart-options {
+    display: flex;
+    margin-bottom: 15px;
+    background-color: var(--bg-widget);
+    border-radius: 6px;
+    padding: 4px;
+    gap: 2px;
+}
+
+.chart-options button {
+    background-color: transparent;
+    border: none;
+    color: var(--text-light);
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: all 0.3s;
+    border-radius: 4px;
+    flex: 1;
+}
+
+.chart-options button.active {
+    background-color: var(--accent-blue);
+    color: white;
+}
+
+.chart-area {
+    height: 200px;
+    background-color: var(--bg-widget);
+    border-radius: var(--border-radius);
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+}
+
+.chart-bars {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    height: 140px;
+    margin-bottom: 10px;
+    gap: 8px;
+}
+
+.bar {
+    background: linear-gradient(to top, var(--accent-blue), #64b5f6);
+    border-radius: 4px 4px 0 0;
+    flex: 1;
+    min-width: 30px;
+    transition: height 0.3s ease;
+}
+
+.chart-labels {
+    display: flex;
+    justify-content: space-between;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    gap: 8px;
+}
+
+.chart-labels span {
+    flex: 1;
+    text-align: center;
+}
+
+/* Calendar styling */
+.calendar .content-box {
+    background-color: var(--bg-widget);
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+    margin-bottom: 15px;
+}
+
+.calendar-day {
+    background-color: var(--bg-content);
+    border-radius: 4px;
+    padding: 10px 5px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.9rem;
+}
+
+.calendar-day:hover {
+    background-color: var(--accent-blue);
+    transform: translateY(-2px);
+}
+
+.calendar-day.selected {
+    background-color: var(--accent-blue);
+    font-weight: bold;
+    transform: translateY(-2px);
+}
+
+.calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--bg-content);
+}
+
+.calendar-month {
+    font-weight: bold;
+    color: var(--text-light);
+}
+
+.calendar-nav button {
+    background-color: var(--bg-content);
+    border: none;
+    color: var(--text-light);
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-left: 5px;
+}
+
+.calendar-nav button:hover {
+    background-color: var(--accent-blue);
+}
+
+/* Forecast styling */
+.forecast-box {
+    text-align: center;
+    padding: 30px 20px;
+}
+
+.forecast .visitor-count {
+    font-size: 2.5rem;
+    margin: 15px 0;
+}
+
+.forecast-note {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+/* Manual link styling */
+.link-box {
+    text-align: center;
+    padding: 25px 20px;
+}
+
+.manual-button {
+    background-color: var(--accent-blue);
+    color: white;
+    text-decoration: none;
+    padding: 15px 30px;
+    border-radius: var(--border-radius);
+    font-weight: bold;
+    transition: all 0.3s;
+    display: inline-block;
+    text-align: center;
+    width: 100%;
+}
+
+.manual-button:hover {
+    background-color: #1976D2;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+}
+
+.confirm-button {
+    background-color: var(--accent-blue);
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    font-weight: bold;
+    width: 100%;
+    margin-top: 15px;
+    transition: all 0.3s;
+}
+
+.confirm-button:hover {
+    background-color: #1976D2;
+    transform: translateY(-2px);
+}
+
+@media (max-width: 768px) {
+    .container {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto;
+    }
+    
+    .widget {
+        grid-column: 1 / -1 !important;
+        grid-row: auto !important;
+    }
+    
+    .chart-bars {
+        gap: 4px;
+    }
+    
+    .bar {
+        min-width: 20px;
+    }
 }

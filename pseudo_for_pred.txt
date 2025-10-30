@@ -3,15 +3,16 @@ loaded model = load model lol
 openmeteodata = ask open meteo API for data
 DATE = date from openmeteodata[first row's date]
 
+# API PART
 loop for all the days we want to predict - next 365 days:
     
-    try to mach current date to openmeteodata's date:
+    try to match current date to openmeteodata's date:
             drop the date part of the API
             beginning of list .append(API's data)
     except if no response or (too far or none (so no data)):
             then avg last 5y of temp, perc, rain and beginning of list .append(avgofrain, avgofperc, avgoftemp)
         
-
+# HOLIDAY PART
     try match current DATE to holidays df:
         put the year, month,day,weekday at the end then drop the date from the first column
         end of list.append(the matched row + year,month,day,weekday) "this will be a huge one, everything except the date"
