@@ -2,12 +2,15 @@ data/*
 !data/raw/
 !data/processed/
 !data/database/
+!data/predictions/
 data/raw/*
 data/processed/*
 data/database/*
+data/predictions/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 !data/database/.gitkeep
+!data/predictions/.gitkeep
 !data/database/database_sample.db
 tests/visulization/charts/*
 !tests/visulization/charts/.gitkeep
