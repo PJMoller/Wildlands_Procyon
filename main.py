@@ -11,7 +11,7 @@ import os
 
 # === File paths ===
 PROCESSED_CSV = "data/processed/processed_merge.csv"
-MODEL_PATH = "data/processed/model.pkl"
+MODEL_PATH = "data/processed/RFRmodel.pkl"
 HOLIDAYS_CSV = "data/processed/processed_holidays.csv"
 OUTPUT_DIR = "data/predictions/"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
