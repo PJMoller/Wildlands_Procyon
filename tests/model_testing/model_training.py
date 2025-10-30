@@ -1,4 +1,4 @@
-from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.model_selection import train_test_split, GridSearchCV, RandomizedSearchCV
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.svm import SVR
 from sklearn.linear_model import LinearRegression, Ridge, Lasso, ElasticNet
@@ -17,7 +17,7 @@ processed_df = pd.read_csv("../../data/processed/processed_merge.csv")
 X = processed_df.drop(columns=["ticket_num"])
 y = processed_df["ticket_num"]
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-"""
+
 # RF Regressor with hyperparameter tuning
 model = RandomForestRegressor(random_state=42)
 
@@ -28,7 +28,7 @@ param_grid = {
     "min_samples_leaf": [1, 2, 4] # min samples in leaf node
 }
 
-grid_search = GridSearchCV(estimator=model, param_grid=param_grid,cv=5, scoring="neg_mean_absolute_error", n_jobs=-1, verbose=1)
+grid_search = RandomizedSearchCV(estimator=model, param_distributions=param_grid,cv=5, scoring="neg_mean_absolute_error", n_jobs=-1, verbose=1)
 
 grid_search.fit(X_train, y_train)
 
@@ -45,7 +45,7 @@ r2 = r2_score(y_test, y_pred)
 print(f"RF MAE: {mae}, MSE: {mse}, R2: {r2}")
 # Best parameters found: {'max_depth': None, 'min_samples_leaf': 1, 'min_samples_split': 2, 'n_estimators': 200}
 # RF MAE: 62.80674629324547, MSE: 19842.27428233114, R2: 0.8232408697312988
-"""
+
 
 """
 # Polynomial Regression
@@ -63,7 +63,7 @@ param_grid = {
 }
 
 # Grid search for hyperparameter tuning
-grid_search = GridSearchCV(estimator=model1_pipe,param_grid=param_grid,cv=5,
+grid_search = RandomizedSearchCV(estimator=model1_pipe,param_distributions=param_grid,cv=5,
                            scoring="neg_mean_absolute_error", n_jobs=-1, verbose=1)
 
 # Fitting the model
@@ -96,7 +96,7 @@ param_grid = {
 }
 
 # Grid search for hyperparameter tuning
-grid_search = GridSearchCV(estimator=model2_elastic,param_grid=param_grid,cv=5,
+grid_search = RandomizedSearchCV(estimator=model2_elastic,param_distributions=param_grid,cv=5,
                            scoring="neg_mean_absolute_error")
 
 # Fitting the model
@@ -116,6 +116,7 @@ r2 = r2_score(y_test, y_pred)
 #print(y_pred)
 print(f"Elasticnet MAE: {mae}, MSE: {mse}, R2: {r2}")
 """
+"""
 # SVM Support Vector Machine
 
 svm = SVR()
@@ -123,11 +124,11 @@ svm = SVR()
 param_grid = {
     'C': [0.1, 1, 10],
     'gamma': [0.1, 1, 10],
-    'kernel': ['linear', 'rbf']
+    'kernel': ['linear', 'rbf', 'poly']
 }
 
 # Grid search for hyperparameter tuning
-grid_search = GridSearchCV(estimator=svm,param_grid=param_grid,cv=5,
+grid_search = RandomizedSearchCV(estimator=svm,param_distributions=param_grid,cv=5,
                            scoring="neg_mean_absolute_error", n_jobs=-1, verbose=3)
 
 # Fitting the model
@@ -149,7 +150,7 @@ print(f"SVM MAE: {mae}, MSE: {mse}, R2: {r2}")
 #SVM MAE: 95.35585717162338, MSE: 133774.30084607404, R2: 0.07970436827713079
 
 # save the model to connect to the website later
-
+"""
 """
 # XGBoost Regressor with hyperparameter tuning
 
@@ -164,7 +165,7 @@ param_grid = {
     "colsample_bytree": [0.5,0.7, 1]
 }
 
-grid_search = GridSearchCV(xgb, param_grid, scoring="neg_mean_squared_error", cv=5, n_jobs=-1, verbose=3)
+grid_search = RandomizedSearchCV(xgb, param_distributions=param_grid, scoring="neg_mean_squared_error", cv=5, n_jobs=-1, verbose=3)
 
 grid_search.fit(X_train, y_train)
 
