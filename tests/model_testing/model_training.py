@@ -40,9 +40,16 @@ y_pred = best_model.predict(X_test)
 mae = mean_absolute_error(y_test, y_pred)
 mse = mean_squared_error(y_test, y_pred)
 r2 = r2_score(y_test, y_pred)
+
+y_train_pred = best_model.predict(X_train)
+
+mae_train = mean_absolute_error(y_train, y_train_pred)
+mse_train = mean_squared_error(y_train, y_train_pred)
+r2_train = r2_score(y_train, y_train_pred)
 #print(y_test.values)
 #print(y_pred)
 print(f"RF MAE: {mae}, MSE: {mse}, R2: {r2}")
+print(f"RF MAE: {mae_train}, MSE: {mse_train}, R2: {r2_train}")
 # Best parameters found: {'max_depth': None, 'min_samples_leaf': 1, 'min_samples_split': 2, 'n_estimators': 200}
 # RF MAE: 62.80674629324547, MSE: 19842.27428233114, R2: 0.8232408697312988
 
