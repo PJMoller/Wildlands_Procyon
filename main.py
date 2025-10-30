@@ -204,6 +204,14 @@ def predict_next_365_days():
         pd.options.display.float_format = "{:.1f}".format
 
 
+#  if any of the event is not 0:
+#        for loop through the events and set all to 0
+#        predict again
+#        compare the difference
+#        add the difference to "event_impact" column
+# else:
+#        set "event_impact" column to 0
+
     # Save all days in one CSV file for dashboard ease
     output_file = os.path.join(OUTPUT_DIR, "predictions_365days.csv")
     pd.DataFrame(all_days_rows).to_csv(output_file, index=False, float_format="%.1f")
