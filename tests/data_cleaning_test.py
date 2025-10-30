@@ -118,17 +118,17 @@ merged_final_df = pd.merge(merged_final_df, camp_og_df, on=["year", "week"], how
 merged_df = merged_final_df.drop(columns=["date"]) # drop date since we have year month day now
 
 # use standard scaling just in case its better for the models
-scaler = StandardScaler()
-num_cols = ["temperature", "rain", "precipitation"]
-merged_df[num_cols] = scaler.fit_transform(merged_df[num_cols])
+# scaler = StandardScaler()
+# num_cols = ["temperature", "rain", "precipitation"]
+# merged_df[num_cols] = scaler.fit_transform(merged_df[num_cols])
 
 # tests
 
 print(merged_df.head(20)) # everything looks good
 
 # Inversing for normal temperatures not the deviation
-merged_df[num_cols] = scaler.inverse_transform(merged_df[num_cols])
-print(merged_df.head(20))
+# merged_df[num_cols] = scaler.inverse_transform(merged_df[num_cols])
+#print(merged_df.head(20))
 
 merged_df.to_csv("../data/processed/processed_merge.csv", index=False) # can be used for ML now (probably)
 #final_holiday_df.to_csv("../data/processed/processed_holidays.csv", index=False) # for visual purposes for myself, not needed for anything now, but ill keep it just in case i messed up something
