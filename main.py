@@ -11,7 +11,7 @@ import os
 
 # === File paths ===
 PROCESSED_CSV = "data/processed/processed_merge.csv"
-MODEL_PATH = "data/processed/model.pkl"
+MODEL_PATH = "data/processed/RFRmodel.pkl"
 HOLIDAYS_CSV = "data/processed/processed_holidays.csv"
 OUTPUT_DIR = "data/predictions/"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -203,6 +203,14 @@ def predict_next_365_days():
             # Round all relevant columns to one decimal
         pd.options.display.float_format = "{:.1f}".format
 
+
+#  if any of the event is not 0:
+#        for loop through the events and set all to 0
+#        predict again
+#        compare the difference
+#        add the difference to "event_impact" column
+# else:
+#        set "event_impact" column to 0
 
     # Save all days in one CSV file for dashboard ease
     output_file = os.path.join(OUTPUT_DIR, "predictions_365days.csv")

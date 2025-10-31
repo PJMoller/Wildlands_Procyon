@@ -9,6 +9,11 @@ from sklearn.pipeline import Pipeline
 from xgboost import XGBRegressor
 import pandas as pd
 import pickle
+import joblib
+import os
+
+PROCESSED_PATH_MODEL = "data/processed/RFRmodel.pkl"
+os.makedirs(PROCESSED_PATH_MODEL, exist_ok=True)
 
 # loading the processed data
 processed_df = pd.read_csv("../../data/processed/processed_merge.csv")
@@ -191,5 +196,7 @@ print(f"XGB MAE: {mae}, MSE: {mse}, R2: {r2}")
 # XGB MAE: 63.529842376708984, MSE: 23052.328125, R2: 0.7946450114250183
 """
 
-#with open("../../data/processed/model.pkl", "wb") as f:
-#    pickle.dump(model, f)
+with open("../../data/processed/RFRmodel.pkl", "wb") as f:
+   pickle.dump(best_model, f)
+
+#joblib.dump(best_model, PROCESSED_PATH_MODEL)
