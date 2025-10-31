@@ -56,6 +56,8 @@ def get_openmeteo():
     df_weather["date"] = pd.to_datetime(df_weather["date"]).dt.tz_convert(None)
     df_weather.drop(columns=["temp_max", "temp_min"], inplace=True)
 
+    df_weather["date"] = df_weather["date"].dt.date
+
     pd.options.display.float_format = "{:.1f}".format
 
     return df_weather
@@ -106,6 +108,8 @@ def predict_next_365_days():
     processed_df["day"] = processed_df["date"].dt.day
     processed_df["weekday"] = processed_df["date"].dt.weekday
 
+    processed_dates = set(processed_df["date"].dt.date)
+
     avg_weather = (
         processed_df.groupby(["month", "day"])[["temperature", "rain", "precipitation"]]
         .mean()
@@ -116,11 +120,11 @@ def predict_next_365_days():
     print("Starting 365-day prediction loop...")
     all_days_rows = []
 
-    for d in range(365):
+    for d in range(75): # 365
         current_date = DATE + timedelta(days=d)
 
         # Weather data
-        match = openmeteo_df[openmeteo_df["date"].dt.date == current_date]
+        match = openmeteo_df[openmeteo_df["date"] == current_date]
         if not match.empty:
             temperature = match["temperature"].iloc[0]
             rain = match["rain"].iloc[0]
@@ -176,29 +180,66 @@ def predict_next_365_days():
             predictions_per_ticket[ticket_name] = predicted_total
 
         total_visitors = sum(predictions_per_ticket.values())
-
-        daily_summary = {
-            "date": current_date,
-
-            "temperature": round(temperature, 1),
-            "rain": round(rain, 1),
-            "precipitation": round(precipitation, 1),
-            "total_visitors": round(total_visitors, 0),
-            **predictions_per_ticket,
-            **holiday_part , # Include holiday columns for display on dashboard
-            "year": current_date.year,
-            "month": current_date.month,
-            "week": current_date.isocalendar().week,
-            "day": current_date.day,
-            "weekday": current_date.weekday()
+        if current_date not in processed_dates or match_holiday.empty:
+            print("if not match")
+            daily_summary = {
+                "date": current_date,
+                "temperature": float(round(temperature, 1)),
+                "rain": float(round(rain, 1)),
+                "precipitation": float(round(precipitation, 1)),
+                "total_visitors": 0,
+                **{ticket: 0 for ticket in ticket_cols},
+                **holiday_part , # Include holiday columns for display on dashboard
+                "year": current_date.year,
+                "month": current_date.month,
+                "week": current_date.isocalendar().week,
+                "day": current_date.day,
+                "weekday": current_date.weekday()
+        }
+        else:
+                print("else does match")
+                daily_summary = {
+                "date": current_date,
+                "temperature": float(round(temperature, 1)),
+                "rain": float(round(rain, 1)),
+                "precipitation": float(round(precipitation, 1)),
+                "total_visitors": float(round(total_visitors, 0)),
+                **predictions_per_ticket,
+                **holiday_part , # Include holiday columns for display on dashboard
+                "year": current_date.year,
+                "month": current_date.month,
+                "week": current_date.isocalendar().week,
+                "day": current_date.day,
+                "weekday": current_date.weekday()
         }
 
         all_days_rows.append(daily_summary)
 
-        print(
-            f"{current_date} | Temp: {temperature:.2f}°C | Rain: {rain:.2f} | "
-            f"Precipitation: {precipitation:.2f} | Total Visitors: {total_visitors:.0f}"
-        )
+
+        df = pd.DataFrame(all_days_rows)
+
+        float_cols = ["temperature", "rain", "precipitation", "total_visitors"]
+        for col in float_cols:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors='coerce')
+
+        #df["date"] = df["date"].astype(str)
+
+
+        column_order = [
+            "date", "temperature", "rain", "precipitation", "total_visitors",
+            *ticket_cols, *holiday_cols,
+            "year", "month", "week", "day", "weekday"
+        ]
+        df = df.reindex(columns=column_order)
+
+
+        print(f"{current_date} | Temp: {daily_summary['temperature']} | Rain: {daily_summary['rain']} | Precipitation: {daily_summary['precipitation']} | Total Visitors: {daily_summary['total_visitors']}")
+
+        # print(
+        #     f"{current_date} | Temp: {temperature:.2f}°C | Rain: {rain:.2f} | "
+        #     f"Precipitation: {precipitation:.2f} | Total Visitors: {total_visitors:.0f}"
+        # )
 
             # Round all relevant columns to one decimal
         pd.options.display.float_format = "{:.1f}".format
@@ -213,7 +254,7 @@ def predict_next_365_days():
 #        set "event_impact" column to 0
 
     # Save all days in one CSV file for dashboard ease
-    output_file = os.path.join(OUTPUT_DIR, "predictions_365days.csv")
+    output_file = os.path.join(OUTPUT_DIR, "mainpredictions_365days.csv")
     pd.DataFrame(all_days_rows).to_csv(output_file, index=False, float_format="%.1f")
     print(f"✅ Saved all 365-day predictions to {output_file}")
     print("✅ All 365-day predictions complete.")
