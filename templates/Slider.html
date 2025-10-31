@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Slider page</title>
-    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../static/style.css">
 </head>
 <body>
     <div class="container">
@@ -49,7 +49,8 @@
         <div class="widget events">
             <h3>Graph</h3>
             <div class="content-box">
-                
+                <p> Wednesday, Oct 1</p>
+                <canvas id="forecastChart" height="200"></canvas>
             </div>
         </div>
 
@@ -63,7 +64,7 @@
 
         <div class="widget manual-link">
             <div class="content-box link-box">
-                <a href="Dashboard.html" class="manual-button">Dashboard</a>
+                <a href="{{ url_for('home') }}" class="manual-button">Dashboard</a>
             </div>
         </div>
     </div>
@@ -72,5 +73,37 @@
         IT was the one that kinda worked for me during Period 2 of Relai Bots for the pie charts. 
     -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const ctx = document.getElementById('forecastChart').getContext('2d');
+        const chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [0,1,2,3,4,5,6,7,8],
+                datasets: [
+                    {
+                        label: 'Forecasted',
+                        data: [450,330,500,420,200,300,400,180,0],
+                        borderColor: '#f0a0ff',
+                        backgroundColor: 'transparent',
+                        tension: 0.3
+                    },
+                    {
+                        label: 'Custom forecasting',
+                        data: [0,600,150,430,300,350,300,200,0],
+                        borderColor: '#a080ff',
+                        backgroundColor: 'transparent',
+                        tension: 0.3
+                    }
+                ]
+            },
+            options: {
+                plugins: { legend: { labels: { color: '#f0f0f0' } } },
+                scales: {
+                    x: { ticks: { color: '#a0a0a0' }, grid: { color: '#3a3a3a' } },
+                    y: { ticks: { color: '#a0a0a0' }, grid: { color: '#3a3a3a' } }
+                }
+            }
+        });
+    </script>
 </body>
 </html>
