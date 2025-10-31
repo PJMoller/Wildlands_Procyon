@@ -18,7 +18,7 @@ holiday_og_df = pd.read_excel("../data/raw/Holidays 2023-2026 Netherlands and Ge
 #print(holiday_og_df.describe())
 
 camp_og_df = pd.read_excel("../data/raw/campaings.xlsx")
-print(camp_og_df.head())
+#print(camp_og_df.head())
 #print(camp_og_df.dtypes)
 #print(camp_og_df.describe())
 
@@ -60,7 +60,15 @@ visitor_og_df[bool_cols] = visitor_og_df[bool_cols].astype(int) # since true = 1
 
 weather_og_df.columns = ["date", "temperature", "rain", "precipitation", "hour"] # rename columns
 weather_og_df = weather_og_df.drop("hour", axis=1)
-#print(holiday_og_df.head(20))
+weather_og_df["date"] = weather_og_df["date"].dt.date
+weather_daily = weather_og_df.groupby("date").agg({
+    "temperature": "mean",       # average temperature
+    "rain": "sum",               # total rain
+    "precipitation": "sum"       # total precipitation
+}).reset_index()
+weather_daily["date"] = pd.to_datetime(weather_daily["date"], format="%Y-%m-%d")
+weather_daily = weather_daily.round({"temperature": 1, "rain": 1, "precipitation": 1})
+#print(weather_daily.head(20))
 
 
 
@@ -97,10 +105,9 @@ final_holiday_df[bool_cols] = final_holiday_df[bool_cols].astype(int) # since tr
 camp_og_df.columns = ["year", "week", "promo_NLNoord", "promo_NLMidden", "promo_NLZuid", "promo_Nordrhein-Westfalen", "promo_Niedersachsen"] # rename columns
 
 
-
 # merge the 3 datasets, #1 weather + hourly, #2 add holidays
 
-merged_wh_df = pd.merge(weather_og_df, visitor_og_df, on="date", how="inner")
+merged_wh_df = pd.merge(weather_daily, visitor_og_df, on="date", how="inner")
 
 merged_wh_df["date"] = pd.to_datetime(merged_wh_df["date"].dt.date, format="%Y-%m-%d")
 
@@ -124,13 +131,13 @@ merged_df = merged_final_df.drop(columns=["date"]) # drop date since we have yea
 
 # tests
 
-print(merged_df.head(20)) # everything looks good
+#print(merged_df.head(20)) # everything looks good
 
 # Inversing for normal temperatures not the deviation
 # merged_df[num_cols] = scaler.inverse_transform(merged_df[num_cols])
 #print(merged_df.head(20))
 
-merged_df.to_csv("../data/processed/processed_merge.csv", index=False) # can be used for ML now (probably)
+merged_df.to_csv("../data/processed/processed_merge.csv", index=False) # can be used for ML now
 #final_holiday_df.to_csv("../data/processed/processed_holidays.csv", index=False) # for visual purposes for myself, not needed for anything now, but ill keep it just in case i messed up something
 
 # training models in model_training.py
