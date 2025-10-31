@@ -179,28 +179,49 @@ def predict_next_365_days():
 
         total_visitors = sum(predictions_per_ticket.values())
 
-        daily_summary = {
-            "date": current_date,
-
-            "temperature": round(temperature, 1),
-            "rain": round(rain, 1),
-            "precipitation": round(precipitation, 1),
-            "total_visitors": round(total_visitors, 0),
-            **predictions_per_ticket,
-            **holiday_part , # Include holiday columns for display on dashboard
-            "year": current_date.year,
-            "month": current_date.month,
-            "week": current_date.isocalendar().week,
-            "day": current_date.day,
-            "weekday": current_date.weekday()
-        }
-
+        if (current_date.day == 31 and current_date.month == 12) or (current_date.day == 1 and current_date.month == 1):
+            print("oud en nieuwjaarsdag")
+            daily_summary = {
+                "date": current_date,
+                "temperature": float(round(temperature, 1)),
+                "rain": float(round(rain, 1)),
+                "precipitation": float(round(precipitation, 1)),
+                "total_visitors": 0,
+                **{ticket: 0 for ticket in ticket_cols},
+                **holiday_part , # Include holiday columns for display on dashboard
+                "year": current_date.year,
+                "month": current_date.month,
+                "week": current_date.isocalendar().week,
+                "day": current_date.day,
+                "weekday": current_date.weekday()
+        }    
+        else:
+            print("normal cases")
+            daily_summary = {
+                "date": current_date,
+                "temperature": round(temperature, 1),
+                "rain": round(rain, 1),
+                "precipitation": round(precipitation, 1),
+                "total_visitors": round(total_visitors, 0),
+                **predictions_per_ticket,
+                **holiday_part , # Include holiday columns for display on dashboard
+                "year": current_date.year,
+                "month": current_date.month,
+                "week": current_date.isocalendar().week,
+                "day": current_date.day,
+                "weekday": current_date.weekday()
+            }
+        
         all_days_rows.append(daily_summary)
-
+        # for day_dict in all_days_rows:
+        #     print(f"Date: {day_dict["date"]}, {day_dict["total_visitors"]}")
         print(
-            f"{current_date} | Temp: {temperature:.2f}°C | Rain: {rain:.2f} | "
-            f"Precipitation: {precipitation:.2f} | Total Visitors: {total_visitors:.0f}"
+            f"{daily_summary['date']} | Temp: {daily_summary['temperature']:.1f}°C | "
+            f"Rain: {daily_summary['rain']:.1f} | "
+            f"Precipitation: {daily_summary['precipitation']:.1f} | "
+            f"Total Visitors: {daily_summary['total_visitors']:.0f}"
         )
+
 
             # Round all relevant columns to one decimal
         pd.options.display.float_format = "{:.1f}".format
@@ -215,7 +236,7 @@ def predict_next_365_days():
 #        set "event_impact" column to 0
 
     # Save all days in one CSV file for dashboard ease
-    output_file = os.path.join(OUTPUT_DIR, "app predictions_365days.csv")
+    output_file = os.path.join(OUTPUT_DIR, "temp app predictions_365days.csv")
     pd.DataFrame(all_days_rows).to_csv(output_file, index=False, float_format="%.1f")
     print(f"✅ Saved all 365-day predictions to {output_file}")
     print("✅ All 365-day predictions complete.")
