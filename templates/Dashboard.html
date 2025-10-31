@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Wildlands Dashboard</title>
-    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../static/style.css">
 </head>
 <body>
     <div class="container">
@@ -48,8 +48,7 @@
             <h3>Expected Attendance</h3>
             <div class="content-box">
                 <div class="chart-options">
-                    <button class="active">Day</button>
-                    <button>Week</button>
+                    <button class="active">Week</button>
                     <button>Month</button>
                     <button>Year</button>
                 </div>
@@ -129,11 +128,11 @@
         <div class="widget manual-link">
             <h3>Manual Controls</h3>
             <div class="content-box link-box">
-                <a href="Slider.html" class="manual-button">Slider Page</a>
+                <a href="{{ url_for('slider') }}" class="manual-button">Slider Page</a>
             </div>
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html> 
