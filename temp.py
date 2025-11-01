@@ -227,6 +227,8 @@ def predict_next_365_days():
         pd.options.display.float_format = "{:.1f}".format
 
 
+# PROMOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
+
 #  if any of the event is not 0:
 #        for loop through the events and set all to 0
 #        predict again

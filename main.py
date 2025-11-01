@@ -180,30 +180,30 @@ def predict_next_365_days():
             predictions_per_ticket[ticket_name] = predicted_total
 
         total_visitors = sum(predictions_per_ticket.values())
+        # if current_date not in processed_dates or match_holiday.empty:
+        #     print("if not match")
+        #     daily_summary = {
+        #         "date": current_date,
+        #         "temperature": float(round(temperature, 1)),
+        #         "rain": float(round(rain, 1)),
+        #         "precipitation": float(round(precipitation, 1)),
+        #         "total_visitors": 0,
+        #         **{ticket: 0 for ticket in ticket_cols},
+        #         **holiday_part , # Include holiday columns for display on dashboard
+        #         "year": current_date.year,
+        #         "month": current_date.month,
+        #         "week": current_date.isocalendar().week,
+        #         "day": current_date.day,
+        #         "weekday": current_date.weekday()
+        # }
         if current_date not in processed_dates or match_holiday.empty:
-            print("if not match")
-            daily_summary = {
-                "date": current_date,
-                "temperature": float(round(temperature, 1)),
-                "rain": float(round(rain, 1)),
-                "precipitation": float(round(precipitation, 1)),
-                "total_visitors": 0,
-                **{ticket: 0 for ticket in ticket_cols},
-                **holiday_part , # Include holiday columns for display on dashboard
-                "year": current_date.year,
-                "month": current_date.month,
-                "week": current_date.isocalendar().week,
-                "day": current_date.day,
-                "weekday": current_date.weekday()
-        }
-        else:
                 print("else does match")
                 daily_summary = {
                 "date": current_date,
-                "temperature": float(round(temperature, 1)),
-                "rain": float(round(rain, 1)),
-                "precipitation": float(round(precipitation, 1)),
-                "total_visitors": float(round(total_visitors, 0)),
+                "temperature": round(temperature, 1),
+                "rain": round(rain, 1),
+                "precipitation": round(precipitation, 1),
+                "total_visitors": round(total_visitors, 0),
                 **predictions_per_ticket,
                 **holiday_part , # Include holiday columns for display on dashboard
                 "year": current_date.year,
