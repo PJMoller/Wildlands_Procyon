@@ -15,3 +15,5 @@ data/predictions/*
 tests/visulization/charts/*
 !tests/visulization/charts/.gitkeep
 tests/model_testing/catboost_info/*
+unit_tests/*
+tests/__pycache__/*
