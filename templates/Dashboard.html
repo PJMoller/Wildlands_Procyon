@@ -48,12 +48,12 @@
             <h3>Expected Attendance</h3>
             <div class="content-box">
                 <div class="chart-options">
-                    <button class="active">Week</button>
+                    <button class="active">Day</button>
+                    <button>Week</button>
                     <button>Month</button>
                     <button>Year</button>
                 </div>
                 <div class="chart-area">
-                    <!-- Simple bar chart representation -->
                     <div class="chart-bars">
                         <div class="bar" style="height: 80%"></div>
                         <div class="bar" style="height: 60%"></div>
@@ -86,8 +86,19 @@
                         <button>&gt;</button>
                     </div>
                 </div>
+
+                <!-- ✅ Dias da semana -->
+                <div class="calendar-weekdays">
+                    <div>Mon</div>
+                    <div>Tue</div>
+                    <div>Wed</div>
+                    <div>Thu</div>
+                    <div>Fri</div>
+                    <div>Sat</div>
+                    <div>Sun</div>
+                </div>
+
                 <div class="calendar-grid">
-                    <!-- Calendar days would be generated dynamically -->
                     <div class="calendar-day">8</div>
                     <div class="calendar-day">9</div>
                     <div class="calendar-day">10</div>
@@ -128,11 +139,11 @@
         <div class="widget manual-link">
             <h3>Manual Controls</h3>
             <div class="content-box link-box">
-                <a href="{{ url_for('slider') }}" class="manual-button">Slider Page</a>
+                <a href="Slider.html" class="manual-button">Slider Page</a>
             </div>
         </div>
     </div>
 
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script src="static/script.js"></script>
 </body>
-</html> 
+</html>

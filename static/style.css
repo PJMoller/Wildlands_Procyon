@@ -367,3 +367,13 @@ h3 {
         min-width: 20px;
     }
 }
+
+.calendar-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    text-align: center;
+    font-weight: bold;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    font-size: 0.85rem;
+}
