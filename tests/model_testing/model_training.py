@@ -17,7 +17,7 @@ def process_data():
     except Exception as e:
         print(f"Error loading processed data: {e}")
         processed_df = pd.DataFrame()
-        
+
     if processed_df.empty:
         print("Error: Dataframe is empty")
         return
@@ -35,39 +35,49 @@ def process_data():
 
 def randomforest(X_train, X_test, y_train, y_test):
     # RF Regressor with hyperparameter tuning
-    model = RandomForestRegressor(random_state=42)
+    try:
+        model = RandomForestRegressor(random_state=42)
+    
+        param_grid = {
+            "n_estimators": [50, 100, 200], # number of trees
+            "max_depth": [None, 10, 20, 30], # max depth of trees
+            "min_samples_split": [2, 5, 10], # min samples for splitting a node
+            "min_samples_leaf": [1, 2, 4] # min samples in leaf node
+        }
 
-    param_grid = {
-        "n_estimators": [50, 100, 200], # number of trees
-        "max_depth": [None, 10, 20, 30], # max depth of trees
-        "min_samples_split": [2, 5, 10], # min samples for splitting a node
-        "min_samples_leaf": [1, 2, 4] # min samples in leaf node
-    }
+        grid_search = RandomizedSearchCV(estimator=model, param_distributions=param_grid,cv=5, scoring="neg_mean_absolute_error", n_jobs=-1, verbose=1)
 
-    grid_search = RandomizedSearchCV(estimator=model, param_distributions=param_grid,cv=5, scoring="neg_mean_absolute_error", n_jobs=-1, verbose=1)
+        grid_search.fit(X_train, y_train)
 
-    grid_search.fit(X_train, y_train)
+        print("Best parameters found:", grid_search.best_params_)
 
-    print("Best parameters found:", grid_search.best_params_)
+        best_model = grid_search.best_estimator_
+        y_pred = best_model.predict(X_test)
 
-    best_model = grid_search.best_estimator_
-    y_pred = best_model.predict(X_test)
+        mae = mean_absolute_error(y_test, y_pred)
+        mse = mean_squared_error(y_test, y_pred)
+        r2 = r2_score(y_test, y_pred)
 
-    mae = mean_absolute_error(y_test, y_pred)
-    mse = mean_squared_error(y_test, y_pred)
-    r2 = r2_score(y_test, y_pred)
+        y_train_pred = best_model.predict(X_train)
 
-    y_train_pred = best_model.predict(X_train)
+        mae_train = mean_absolute_error(y_train, y_train_pred)
+        mse_train = mean_squared_error(y_train, y_train_pred)
+        r2_train = r2_score(y_train, y_train_pred)
+        #print(y_test.values)
+        #print(y_pred)
+        print(f"RF MAE: {mae}, MSE: {mse}, R2: {r2}")
+        print(f"RF MAE_train: {mae_train}, MSE_train: {mse_train}, R2_train: {r2_train}")
 
-    mae_train = mean_absolute_error(y_train, y_train_pred)
-    mse_train = mean_squared_error(y_train, y_train_pred)
-    r2_train = r2_score(y_train, y_train_pred)
-    #print(y_test.values)
-    #print(y_pred)
-    print(f"RF MAE: {mae}, MSE: {mse}, R2: {r2}")
-    print(f"RF MAE_train: {mae_train}, MSE_train: {mse_train}, R2_train: {r2_train}")
-    # Best parameters found: {'n_estimators': 50, 'min_samples_split': 5, 'min_samples_leaf': 1, 'max_depth': None}
-    # RF MAE: 31.302953009953015, MSE: 9885.767252170544, R2: 0.931991209366365
+        return best_model
+        # Best parameters found: {'n_estimators': 50, 'min_samples_split': 5, 'min_samples_leaf': 1, 'max_depth': None}
+        # RF MAE: 31.302953009953015, MSE: 9885.767252170544, R2: 0.931991209366365
+
+    except ValueError as e:
+        print(f"ValueError: {e}")
+        return None
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        return None
 
 def polynomial(X_train, X_test, y_train, y_test):
     # Polynomial Regression
