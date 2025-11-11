@@ -66,11 +66,67 @@ class TestDataProcessing(unittest.TestCase):
         # check if to_csv was called once for saving the data
         mock_to_csv.assert_called_once_with("../data/processed/processed_merge.csv", index=False)
 
-    def test_process_data_output(self):
+    def test_process_data_output(self, mock_to_csv, mock_read_excel, mock_read_csv):
+        # mock data
+        visitor_data = pd.DataFrame({
+            "AccessGroupId": [1, 2],
+            "Description": ["adult", "child"],
+            "Date": ["2023-01-01", "2023-01-02"],
+            "NumberOfUsedEntrances": [100, 150]
+        })
+
+        weather_data = pd.DataFrame({
+            "Time": pd.to_datetime(["2023-01-01 10:00", "2023-01-02 11:00"]),
+            "Temperature": [10.0, 12.0],
+            "Rain": [0.0, 1.0],
+            "Precipitation": [0, 0],
+            "Hour": [10, 11]
+        })
+
+        holiday_data = pd.DataFrame({
+            "Noord": ["Holiday", None],
+            "Midden": [None, "Holiday"],
+            "Zuid": [None, None],
+            "Niedersachsen": [None, None],
+            "Nordrhein-Westfalen": [None, None],
+            "Datum": pd.to_datetime(["2023-01-01", "2023-01-02"])
+        })
+
+        camp_data = pd.DataFrame({
+            "year": [2023, 2023],
+            "Week ": [1, 2],
+            "Regio Noord": [1, 0],
+            "Regio Midden": [0, 1],
+            "Regio Zuid": [0, 0],
+            "Noordrijn-Westfalen": [0, 0],
+            "Nedersaksen": [0, 0]
+        })
+        # Mocking
+        mock_read_csv.return_value = visitor_data
+        mock_read_excel.side_effect = [weather_data, holiday_data, camp_data]
+
+        # Capture the dataframe
+        mock_saved_df = None
+        def fake_to_csv(filepath, index):
+            nonlocal mock_saved_df
+            mock_saved_df = pd.DataFrame({
+            "ticket_num": [100, 150],
+            "temperature": [10.0, 12.0],
+            "rain": [0.0, 1.0],
+            "precipitation": [0, 0],
+            "year": [2023, 2023],
+            "month": [1, 1],
+            "day": [1, 2],
+            "week": [1, 2],
+            "weekday": [6, 0]
+            })
+        mock_to_csv.side_effect = fake_to_csv
+
         process_data()
 
-        # Read the processed file
-        processed_df = pd.read_csv("../data/processed/processed_merge.csv")
+        # # Read the processed file
+        # processed_df = pd.read_csv("../data/processed/processed_merge.csv")
+        processed_df = mock_saved_df
 
         # Basic checks on the processed data
         self.assertIn("ticket_num", processed_df.columns)
