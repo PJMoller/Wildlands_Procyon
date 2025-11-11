@@ -168,36 +168,45 @@ def elasticnet(X_train, X_test, y_train, y_test):
     
 def svm(X_train, X_test, y_train, y_test):
     # SVM Support Vector Machine
+    try:
+        svm = SVR()
 
-    svm = SVR()
+        param_grid = {
+            'C': [0.1, 1, 10],
+            'gamma': [0.1, 1, 10],
+            'kernel': ['linear', 'rbf', 'poly']
+        }
 
-    param_grid = {
-        'C': [0.1, 1, 10],
-        'gamma': [0.1, 1, 10],
-        'kernel': ['linear', 'rbf', 'poly']
-    }
+        # Grid search for hyperparameter tuning
+        grid_search = RandomizedSearchCV(estimator=svm,param_distributions=param_grid,cv=5,
+                                scoring="neg_mean_absolute_error", n_jobs=-1, verbose=3)
 
-    # Grid search for hyperparameter tuning
-    grid_search = RandomizedSearchCV(estimator=svm,param_distributions=param_grid,cv=5,
-                            scoring="neg_mean_absolute_error", n_jobs=-1, verbose=3)
+        # Fitting the model
+        grid_search.fit(X_train, y_train)
 
-    # Fitting the model
-    grid_search.fit(X_train, y_train)
+        print("Best parameters found:", grid_search.best_params_)
 
-    print("Best parameters found:", grid_search.best_params_)
+        best_model = grid_search.best_estimator_
+        y_pred = best_model.predict(X_test)
 
-    best_model = grid_search.best_estimator_
-    y_pred = best_model.predict(X_test)
+        # Evaluating the model
+        mae = mean_absolute_error(y_test, y_pred)
+        mse = mean_squared_error(y_test, y_pred)
+        r2 = r2_score(y_test, y_pred)
+        #print(y_test.values)
+        #print(y_pred)
+        print(f"SVM MAE: {mae}, MSE: {mse}, R2: {r2}")
 
-    # Evaluating the model
-    mae = mean_absolute_error(y_test, y_pred)
-    mse = mean_squared_error(y_test, y_pred)
-    r2 = r2_score(y_test, y_pred)
-    #print(y_test.values)
-    #print(y_pred)
-    print(f"SVM MAE: {mae}, MSE: {mse}, R2: {r2}")
-    #Best parameters found: {'C': 10, 'gamma': 0.1, 'kernel': 'linear'}
-    #SVM MAE: 95.35585717162338, MSE: 133774.30084607404, R2: 0.07970436827713079
+        return best_model
+    
+        #Best parameters found: {'C': 10, 'gamma': 0.1, 'kernel': 'linear'}
+        #SVM MAE: 95.35585717162338, MSE: 133774.30084607404, R2: 0.07970436827713079
+    except ValueError as e:
+        print(f"ValueError: {e}")
+        return None
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        return None  
 
 # save the model to connect to the website later
 
