@@ -1,85 +1,72 @@
 import pandas as pd
 import plotly.express as px
+import plotly.io as pio
 from datetime import timedelta
-import sys
+
+# Load CSV (it’s huge, so low_memory=False avoids warnings)
+df = pd.read_csv("./data/predictions/app_predictions_365days.csv", low_memory=False)
+
+# Keep only the columns we care about
+df = df[['date', 'total_visitors']].dropna()
+df['date'] = pd.to_datetime(df['date'], errors='coerce')
+df = df.dropna(subset=['date'])
+
+# Create folder for charts
 import os
+os.makedirs("charts", exist_ok=True)
 
-# === SETTINGS ===
-INPUT_FILE = "./data/raw/visitordaily.csv"
-CHART_DIR = "./tests/visulization/charts"
-os.makedirs(CHART_DIR, exist_ok=True)
-# ================
+def generate_chart(start_date, period):
+    start = pd.to_datetime(start_date)
 
-# Read command-line args
-PERIOD = sys.argv[1] if len(sys.argv) > 1 else "week"  # week / month / year
-START_DATE = pd.to_datetime(sys.argv[2]) if len(sys.argv) > 2 else pd.to_datetime("2017-10-01")
+    if period == "week":
+        end = start + timedelta(days=6)
+    elif period == "month":
+        end = start + pd.DateOffset(months=1)
+    elif period == "year":
+        end = start + pd.DateOffset(years=1)
+    else:
+        raise ValueError("Invalid period")
 
-# Load CSV
-df = pd.read_csv(INPUT_FILE, sep=";")
-df["Date"] = pd.to_datetime(df["Date"])
+    # Filter data
+    mask = (df['date'] >= start) & (df['date'] <= end)
+    df_filtered = df.loc[mask]
 
-# Combine all AccessGroupIds into total visitors per day
-df_total = df.groupby("Date")["NumberOfUsedEntrances"].sum().reset_index()
+    if df_filtered.empty:
+        print(f"No data for {period} starting {start_date}")
+        return
 
-# Determine date range
-if PERIOD == "week":
-    end_date = START_DATE + timedelta(days=6)
-elif PERIOD == "month":
-    end_date = START_DATE + pd.offsets.MonthEnd(1)
-elif PERIOD == "year":
-    end_date = START_DATE + pd.offsets.YearEnd(1)
-else:
-    raise ValueError("PERIOD must be one of: week, month, year")
+    # Create chart
+    fig = px.bar(
+        df_filtered,
+        x='date',
+        y='total_visitors',
+        labels={'total_visitors': 'Total Visitors', 'date': 'Date'},
+    )
 
-# Filter for that range
-mask = (df_total["Date"] >= START_DATE) & (df_total["Date"] <= end_date)
-df_range = df_total.loc[mask]
+    # Layout styling
+    fig.update_layout(
+        autosize=True,
+        margin=dict(l=40, r=40, t=60, b=40),
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+        font=dict(color="black", family="Arial", size=14),
+        title=dict(
+            text=f"Total Visitors ({period.capitalize()} starting {start.date()})",
+            x=0.5,
+            font=dict(size=20, color="black")
+        )
+    )
 
-# Create bar chart
-fig = px.bar(
-    df_range,
-    x="Date",
-    y="NumberOfUsedEntrances",
-    title=f"Total Visitors ({PERIOD.capitalize()} starting {START_DATE.date()})",
-    labels={"NumberOfUsedEntrances": "Total Visitors"},
-)
+    fig.update_xaxes(color="black", tickfont=dict(color="black", size=12), title_font=dict(color="black"))
+    fig.update_yaxes(color="black", tickfont=dict(color="black", size=12), title_font=dict(color="black"))
+    fig.update_traces(marker_line_width=1.5, marker_line_color='white', opacity=0.9)
 
-fig.update_layout(
-    title={
-        'text': f"Total Visitors ({PERIOD.capitalize()} starting {START_DATE.date()})",
-        'x': 0.5,
-        'xanchor': 'center',
-        'yanchor': 'top',
-        'font': dict(size=20, color='black')
-    },
-    xaxis_title="Date",
-    yaxis_title="Total Visitors",
-    template="plotly_white",
-    autosize=True,
-    margin=dict(l=50, r=30, t=80, b=50),
-    plot_bgcolor="rgba(0,0,0,0)",
-    paper_bgcolor="rgba(0,0,0,0)",
-    font=dict(family="Arial, sans-serif", size=14, color="black"),  # ✅ main font color
-)
+    # Save as standalone HTML snippet
+    output_path = f"charts/chart_{period}_{start_date}.html"
+    pio.write_html(fig, file=output_path, full_html=False, include_plotlyjs="cdn")
+    print(f"✅ Saved {output_path}")
 
-fig.update_xaxes(
-    showgrid=True,
-    gridcolor="rgba(0,0,0,0.1)",
-    color="black",
-    tickfont=dict(color="black")   # ✅ numbers and labels black
-)
-
-fig.update_yaxes(
-    showgrid=True,
-    gridcolor="rgba(0,0,0,0.1)",
-    color="black",
-    tickfont=dict(color="black")
-)
-
-
-# ✅ Save chart with dynamic name
-filename = f"chart_{PERIOD}_{START_DATE.date()}.html"
-output_path = os.path.join(CHART_DIR, filename)
-fig.write_html(output_path, include_plotlyjs="cdn", full_html=False)
-
-print(f"✅ Chart saved to: {output_path}")
+# Example generation
+generate_chart("2025-11-10", "week")
+generate_chart("2025-11-01", "month")
+generate_chart("2026-01-01", "year")
