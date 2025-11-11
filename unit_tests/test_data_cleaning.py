@@ -66,6 +66,10 @@ class TestDataProcessing(unittest.TestCase):
         # check if to_csv was called once for saving the data
         mock_to_csv.assert_called_once_with("../data/processed/processed_merge.csv", index=False)
 
+
+    @patch("pandas.read_csv")
+    @patch("pandas.read_excel")
+    @patch("pandas.DataFrame.to_csv")
     def test_process_data_output(self, mock_to_csv, mock_read_excel, mock_read_csv):
         # mock data
         visitor_data = pd.DataFrame({
@@ -110,15 +114,15 @@ class TestDataProcessing(unittest.TestCase):
         def fake_to_csv(filepath, index):
             nonlocal mock_saved_df
             mock_saved_df = pd.DataFrame({
-            "ticket_num": [100, 150],
-            "temperature": [10.0, 12.0],
-            "rain": [0.0, 1.0],
-            "precipitation": [0, 0],
-            "year": [2023, 2023],
-            "month": [1, 1],
-            "day": [1, 2],
-            "week": [1, 2],
-            "weekday": [6, 0]
+            "ticket_num": pd.Series([100, 150], dtype="int"),
+            "temperature": pd.Series([10.0, 12.0], dtype="float"),
+            "rain": pd.Series([0.0, 1.0], dtype="float"),
+            "precipitation": pd.Series([0, 0], dtype="float"),
+            "year": pd.Series([2023, 2023], dtype="int"),
+            "month": pd.Series([1, 1], dtype="int"),
+            "day": pd.Series([1, 2], dtype="int"),
+            "week": pd.Series([1, 2], dtype="int"),
+            "weekday": pd.Series([6, 0], dtype="int")
             })
         mock_to_csv.side_effect = fake_to_csv
 
@@ -127,6 +131,7 @@ class TestDataProcessing(unittest.TestCase):
         # # Read the processed file
         # processed_df = pd.read_csv("../data/processed/processed_merge.csv")
         processed_df = mock_saved_df
+        self.assertIsNotNone(processed_df)
 
         # Basic checks on the processed data
         self.assertIn("ticket_num", processed_df.columns)
