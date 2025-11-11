@@ -30,7 +30,7 @@ def get_openmeteo():
     params = {
         "latitude": 52.7862,
         "longitude": 6.8917,
-        "daily": ["temperature_2m_max", "temperature_2m_min", "precipitation_sum", "rain_sum"],
+        "daily": ["temperature_2m_max", "temperature_2m_min", "precipitation_sum"], #"rain_sum"
         "forecast_days": 16
     }
 
@@ -48,13 +48,13 @@ def get_openmeteo():
         "temp_max": daily.Variables(0).ValuesAsNumpy(),
         "temp_min": daily.Variables(1).ValuesAsNumpy(),
         "precipitation": daily.Variables(2).ValuesAsNumpy(),
-        "rain": daily.Variables(3).ValuesAsNumpy(),
+        # "rain": daily.Variables(3).ValuesAsNumpy(),
     }
 
     df_weather = pd.DataFrame(daily_data)
     df_weather["temperature"] = ((df_weather["temp_max"] + df_weather["temp_min"]) / 2).astype("float64").round(1)
     df_weather["precipitation"] = df_weather["precipitation"].astype("float64").round(1)
-    df_weather["rain"] = df_weather["rain"].astype("float64").round(1)
+    #df_weather["rain"] = df_weather["rain"].astype("float64").round(1)
     df_weather["date"] = pd.to_datetime(df_weather["date"]).dt.tz_convert(None)
     df_weather.drop(columns=["temp_max", "temp_min"], inplace=True)
 
@@ -70,12 +70,16 @@ def seperating(processed_df):
     holiday = []
 
     for col in processed_df.columns:
-        if col in ["temperature", "rain", "precipitation"]:
+        if col in ["temperature", "precipitation"]:     # removed "rain"
             api.append(col)
         elif col.startswith("ticket_") and col != "ticket_num":
             ticket.append(col)
         else:
             holiday.append(col)
+
+    print("--------------------------------------")
+    print(ticket)
+    print("--------------------------------------")
 
     return api, ticket, holiday
 
@@ -108,10 +112,18 @@ def predict_next_365_days():
     processed_df["day"] = processed_df["date"].dt.day
     processed_df["weekday"] = processed_df["date"].dt.weekday
 
-    avg_weather = (
-        processed_df.groupby(["month", "day"])[["temperature", "rain", "precipitation"]]
+    # avg_weather = (
+    #     processed_df.groupby(["month", "day"])[["temperature", "rain", "precipitation"]]
+    #     .mean()
+    #     .reset_index()
+    # )
+
+
+    avg_rain_by_day = (
+        processed_df.groupby(["month", "day"])[["rain"]]
         .mean()
         .reset_index()
+        .rename(columns={"rain": "avg_rain"})
     )
     #print(avg_weather)
 
@@ -125,14 +137,34 @@ def predict_next_365_days():
         match = openmeteo_df[openmeteo_df["date"].dt.date == current_date]
         if not match.empty:
             temperature = match["temperature"].iloc[0]
-            rain = match["rain"].iloc[0]
-            precipitation = match["precipitation"].iloc[0]
+            #rain = match["rain"].iloc[0]
+            #precipitation = match["precipitation"].iloc[0]
             #print(f"if not match {temperature}, {rain}, {precipitation}")
         else:
-            avg = avg_weather[(avg_weather["month"] == current_date.month) & (avg_weather["day"] == current_date.day)]
-            temperature = avg["temperature"].iloc[0] if not avg.empty else np.nan
-            rain = avg["rain"].iloc[0] if not avg.empty else np.nan
-            precipitation = avg["precipitation"].iloc[0] if not avg.empty else np.nan
+            temp_avg = processed_df[
+                (processed_df["month"] == current_date.month) &
+                (processed_df["day"] == current_date.day)
+            ]["temperature"].mean()
+            temperature = temp_avg if not np.isnan(temp_avg) else np.nan
+            
+        rain_match = avg_rain_by_day[
+            (avg_rain_by_day["month"] == current_date.month) &
+            (avg_rain_by_day["day"] == current_date.day)
+        ]
+
+        #precipitation = float(rain_match["avg_rain"].iloc[0]) if not rain_match.empty else 0.0
+
+        if not rain_match.empty:
+            print("if not")
+            precipitation = float(rain_match["avg_rain"].iloc[0])
+        else:
+            print("else")
+            precipitation = float(0.0)
+
+            # avg = avg_weather[(avg_weather["month"] == current_date.month) & (avg_weather["day"] == current_date.day)]
+            # temperature = avg["temperature"].iloc[0] if not avg.empty else np.nan
+            # rain = avg["rain"].iloc[0] if not avg.empty else np.nan
+            # precipitation = avg["precipitation"].iloc[0] if not avg.empty else np.nan
             #print(f"else {temperature}, {rain}, {precipitation}")
 
 
@@ -162,7 +194,7 @@ def predict_next_365_days():
 
             row = {
                 "temperature": temperature,
-                "rain": rain,
+                #"rain": rain,
                 "precipitation": precipitation,
                 **holiday_part,
                 **ticket_part
@@ -184,7 +216,7 @@ def predict_next_365_days():
             daily_summary = {
                 "date": current_date,
                 "temperature": float(round(temperature, 1)),
-                "rain": float(round(rain, 1)),
+                #"rain": float(round(rain, 1)),
                 "precipitation": float(round(precipitation, 1)),
                 "total_visitors": 0,
                 **{ticket: 0 for ticket in ticket_cols},
@@ -200,7 +232,7 @@ def predict_next_365_days():
             daily_summary = {
                 "date": current_date,
                 "temperature": round(temperature, 1),
-                "rain": round(rain, 1),
+                #"rain": round(rain, 1),
                 "precipitation": round(precipitation, 1),
                 "total_visitors": round(total_visitors, 0),
                 **predictions_per_ticket,
@@ -217,15 +249,44 @@ def predict_next_365_days():
         #     print(f"Date: {day_dict["date"]}, {day_dict["total_visitors"]}")
         print(
             f"{daily_summary['date']} | Temp: {daily_summary['temperature']:.1f}°C | "
-            f"Rain: {daily_summary['rain']:.1f} | "
+            #f"Rain: {daily_summary['rain']:.1f} | "
             f"Precipitation: {daily_summary['precipitation']:.1f} | "
             f"Total Visitors: {daily_summary['total_visitors']:.0f}"
         )
+
+        # Suppose 'ticket_cols' is your list of ticket type column names
+
+        # for day_dict in all_days_rows[:10]:  # First 10 days
+        #     print(f"Date: {day_dict['date']}")
+        #     # Collect ticket types and their predictions for the day
+        #     ticket_predictions = [(ticket, day_dict[ticket]) for ticket in ticket_cols]
+        #     # Sort by prediction value, descending
+        #     ticket_predictions.sort(key=lambda x: x[1], reverse=True)
+        #     # Print sorted results
+        #     for ticket, value in ticket_predictions:
+        #         print(f"  {ticket}: {value:.1f}")
+        #     print("-" * 30)
+
+        
 
 
             # Round all relevant columns to one decimal
         pd.options.display.float_format = "{:.1f}".format
 
+            # Set float columns
+        float_cols = ["temperature", "precipitation", "total_visitors"] + ticket_cols  
+        df = pd.DataFrame(all_days_rows)
+        for col in float_cols:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors='coerce')
+        df["date"] = df["date"].astype(str)
+
+        #Remove 'rain' from column order for CSV
+        column_order = [
+            "date", "temperature", "precipitation", "total_visitors",
+            *ticket_cols, *holiday_cols,
+            "year", "month", "week", "day", "weekday"
+        ]
 
 # PROMOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
 
@@ -238,7 +299,9 @@ def predict_next_365_days():
 #        set "event_impact" column to 0
 
     # Save all days in one CSV file for dashboard ease
-    output_file = os.path.join(OUTPUT_DIR, "temp app predictions_365days.csv")
+    df = df.reindex(columns=column_order)
+    output_file = os.path.join(OUTPUT_DIR, "pre - rain temp app predictions_365days.csv")
+    os.makedirs(os.path.dirname(output_file), exist_ok=True)
     pd.DataFrame(all_days_rows).to_csv(output_file, index=False, float_format="%.1f")
     print(f"✅ Saved all 365-day predictions to {output_file}")
     print("✅ All 365-day predictions complete.")
