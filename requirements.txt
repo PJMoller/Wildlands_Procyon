@@ -6,3 +6,4 @@ scikit-learn
 openmeteo-requests
 requests-cache
 retry-requests
+pytest
