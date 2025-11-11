@@ -81,41 +81,50 @@ def randomforest(X_train, X_test, y_train, y_test):
 
 def polynomial(X_train, X_test, y_train, y_test):
     # Polynomial Regression
+    try:
+        # A pipeline that first creates polynomial features then applies linear regression
+        model1_pipe = Pipeline([
+            ("poly", PolynomialFeatures()),
+            ("ridge", Ridge()),
+        ])
 
-    # A pipeline that first creates polynomial features then applies linear regression
-    model1_pipe = Pipeline([
-        ("poly", PolynomialFeatures()),
-        ("ridge", Ridge()),
-    ])
+        # A parameter grid to search for the best degree of polynomial features
+        param_grid = {
+            "poly__degree": [2],
+            "ridge__alpha": [0.01, 0.1, 1.0, 10.0],
+        }
 
-    # A parameter grid to search for the best degree of polynomial features
-    param_grid = {
-        "poly__degree": [2],
-        "ridge__alpha": [0.01, 0.1, 1.0, 10.0],
-    }
+        # Grid search for hyperparameter tuning
+        grid_search = RandomizedSearchCV(estimator=model1_pipe,param_distributions=param_grid,cv=5,
+                                scoring="neg_mean_absolute_error", n_jobs=-1, verbose=1)
 
-    # Grid search for hyperparameter tuning
-    grid_search = RandomizedSearchCV(estimator=model1_pipe,param_distributions=param_grid,cv=5,
-                            scoring="neg_mean_absolute_error", n_jobs=-1, verbose=1)
+        # Fitting the model
+        grid_search.fit(X_train, y_train)
 
-    # Fitting the model
-    grid_search.fit(X_train, y_train)
+        print("Best parameters found:", grid_search.best_params_)
 
-    print("Best parameters found:", grid_search.best_params_)
+        # Getting the best model from grid search
+        best_model = grid_search.best_estimator_
+        y_pred = best_model.predict(X_test)
 
-    # Getting the best model from grid search
-    best_model = grid_search.best_estimator_
-    y_pred = best_model.predict(X_test)
+        # Evaluating the model
+        mae = mean_absolute_error(y_test, y_pred)
+        mse = mean_squared_error(y_test, y_pred)
+        r2 = r2_score(y_test, y_pred)
+        #print(y_test.values)
+        #print(y_pred)
+        print(f"Poly MAE: {mae}, MSE: {mse}, R2: {r2}")
 
-    # Evaluating the model
-    mae = mean_absolute_error(y_test, y_pred)
-    mse = mean_squared_error(y_test, y_pred)
-    r2 = r2_score(y_test, y_pred)
-    #print(y_test.values)
-    #print(y_pred)
-    print(f"Poly MAE: {mae}, MSE: {mse}, R2: {r2}")
-    # Best parameters found: {'poly__degree': 2, 'ridge__alpha': 10.0}
-    # Poly MAE: 98.619551197128, MSE: 38934.33004683598, R2: 0.6531648429635171
+        return best_model
+        # Best parameters found: {'poly__degree': 2, 'ridge__alpha': 10.0}
+        # Poly MAE: 98.619551197128, MSE: 38934.33004683598, R2: 0.6531648429635171
+        
+    except ValueError as e:
+        print(f"ValueError: {e}")
+        return None
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        return None    
 
 def elasticnet(X_train, X_test, y_train, y_test):   
     # ElasticNet Regression
