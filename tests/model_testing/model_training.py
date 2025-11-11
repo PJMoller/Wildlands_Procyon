@@ -1,4 +1,4 @@
-from sklearn.model_selection import train_test_split, GridSearchCV, RandomizedSearchCV
+from sklearn.model_selection import train_test_split, GridSearchCV, RandomizedSearchCV, TimeSeriesSplit
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.svm import SVR
 from sklearn.linear_model import LinearRegression, Ridge, Lasso, ElasticNet
@@ -45,7 +45,11 @@ def randomforest(X_train, X_test, y_train, y_test):
             "min_samples_leaf": [1, 2, 4] # min samples in leaf node
         }
 
-        grid_search = RandomizedSearchCV(estimator=model, param_distributions=param_grid,cv=5, scoring="neg_mean_absolute_error", n_jobs=-1, verbose=1)
+        # Timeseries cross validation
+        tscv = TimeSeriesSplit(n_splits=5)
+
+        grid_search = RandomizedSearchCV(estimator=model, param_distributions=param_grid,
+                                         cv=tscv, scoring="neg_mean_absolute_error", n_jobs=-1, verbose=1)
 
         grid_search.fit(X_train, y_train)
 
@@ -255,4 +259,5 @@ def xgboost(X_train, X_test, y_train, y_test):
 #    pickle.dump(model, f)
 
 if __name__ == "__main__":
-    randomforest()
+    X_train, X_test, y_train, y_test = process_data()
+    randomforest(X_train, X_test, y_train, y_test)
