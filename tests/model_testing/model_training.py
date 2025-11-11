@@ -118,7 +118,7 @@ def polynomial(X_train, X_test, y_train, y_test):
         return best_model
         # Best parameters found: {'poly__degree': 2, 'ridge__alpha': 10.0}
         # Poly MAE: 98.619551197128, MSE: 38934.33004683598, R2: 0.6531648429635171
-        
+
     except ValueError as e:
         print(f"ValueError: {e}")
         return None
@@ -128,34 +128,43 @@ def polynomial(X_train, X_test, y_train, y_test):
 
 def elasticnet(X_train, X_test, y_train, y_test):   
     # ElasticNet Regression
+    try:
+        model2_elastic = ElasticNet(max_iter=3000)
 
-    model2_elastic = ElasticNet(max_iter=3000)
+        param_grid = {
+            'alpha': [0.01,0.1,0.5,1.0,2.5,5.0,10.0,100.0],    # Overall regularization strength
+            'l1_ratio': [0.1,0.3,0.5,0.7,0.9,1.0]   # Balance between the L1 and L2 penalties (Lasso and Ridge)
+        }
 
-    param_grid = {
-        'alpha': [0.01,0.1,0.5,1.0,2.5,5.0,10.0,100.0],    # Overall regularization strength
-        'l1_ratio': [0.1,0.3,0.5,0.7,0.9,1.0]   # Balance between the L1 and L2 penalties (Lasso and Ridge)
-    }
+        # Grid search for hyperparameter tuning
+        grid_search = RandomizedSearchCV(estimator=model2_elastic,param_distributions=param_grid,cv=5,
+                                scoring="neg_mean_absolute_error")
 
-    # Grid search for hyperparameter tuning
-    grid_search = RandomizedSearchCV(estimator=model2_elastic,param_distributions=param_grid,cv=5,
-                            scoring="neg_mean_absolute_error")
+        # Fitting the model
+        grid_search.fit(X_train, y_train)
 
-    # Fitting the model
-    grid_search.fit(X_train, y_train)
+        print("Best parameters found:", grid_search.best_params_)
 
-    print("Best parameters found:", grid_search.best_params_)
+        # Getting the best model from the grid search
+        best_model = grid_search.best_estimator_
+        y_pred = best_model.predict(X_test)
 
-    # Getting the best model from the grid search
-    best_model = grid_search.best_estimator_
-    y_pred = best_model.predict(X_test)
+        # Evaluating the model
+        mae = mean_absolute_error(y_test, y_pred)
+        mse = mean_squared_error(y_test, y_pred)
+        r2 = r2_score(y_test, y_pred)
+        #print(y_test.values)
+        #print(y_pred)
+        print(f"Elasticnet MAE: {mae}, MSE: {mse}, R2: {r2}")
 
-    # Evaluating the model
-    mae = mean_absolute_error(y_test, y_pred)
-    mse = mean_squared_error(y_test, y_pred)
-    r2 = r2_score(y_test, y_pred)
-    #print(y_test.values)
-    #print(y_pred)
-    print(f"Elasticnet MAE: {mae}, MSE: {mse}, R2: {r2}")
+        return best_model
+    
+    except ValueError as e:
+        print(f"ValueError: {e}")
+        return None
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        return None    
     
 def svm(X_train, X_test, y_train, y_test):
     # SVM Support Vector Machine
