@@ -12,12 +12,19 @@ import pickle
 
 def process_data():
     # loading the processed data
-    processed_df = pd.read_csv("../../data/processed/processed_merge.csv")
-
-    # getting the data ready
-    X = processed_df.drop(columns=["ticket_num"])
-    y = processed_df["ticket_num"]
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    try:
+        processed_df = pd.read_csv("../../data/processed/processed_merge.csv")
+    except Exception as e:
+        print(f"Error loading processed data: {e}")
+        processed_df = pd.DataFrame()
+    try:    
+        # getting the data ready
+        X = processed_df.drop(columns=["ticket_num"])
+        y = processed_df["ticket_num"]
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    except Exception as e:
+        print(f"Error during data preparation or split: {e}")
+        X_train, X_test, y_train, y_test = None, None, None, None
 
     return X_train, X_test, y_train, y_test
 
