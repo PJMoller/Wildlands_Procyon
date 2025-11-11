@@ -137,6 +137,13 @@ def process_data():
     visitor_og_df["ticket_num"] = visitor_og_df["ticket_num"].astype(int) # convert to int
 
     visitor_og_df = visitor_og_df.drop("groupID", axis=1) # drop access group id since its not needed
+    """
+    ticket_sums = visitor_og_df.groupby("ticket_name")["ticket_num"].sum().sort_values(ascending=False)
+    print(ticket_sums)
+    print("Total tickets summed:", ticket_sums.sum())
+    print("Total tickets overall:", visitor_og_df["ticket_num"].sum())
+    """
+
 
     visitor_og_df = pd.get_dummies(visitor_og_df, columns=["ticket_name"], prefix="ticket") # one hot encode ticket names
 
