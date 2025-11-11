@@ -25,5 +25,4 @@ jobs:
           pip install -r requirements.txt
 
       - name: run unit test data
-        working-directory: unit_tests
-        run: test_data_cleaning -v
+        run: **pytest -v unit_tests/test_data_cleaning.py**
