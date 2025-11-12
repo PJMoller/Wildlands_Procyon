@@ -82,6 +82,33 @@ def today_info():
     })
 
 
+@app.route("/api/tickets")
+def get_ticket_breakdown():
+    date_str = request.args.get("date")
+    if not date_str:
+        return jsonify({"error": "Missing date"}), 400
+
+    try:
+        selected_date = pd.to_datetime(date_str).normalize()
+    except Exception:
+        return jsonify({"error": "Invalid date format"}), 400
+
+    row = df[df['date'] == selected_date]
+    if row.empty:
+        return jsonify({"labels": [], "values": []})
+
+    # Get ticket-type columns dynamically
+    ticket_cols = [c for c in df.columns if c.startswith("ticket_")]
+    ticket_data = row[ticket_cols].iloc[0]
+
+    # Filter out zero or NaN values for cleaner pie chart
+    ticket_data = ticket_data[ticket_data > 0]
+
+    return jsonify({
+        "labels": ticket_data.index.tolist(),
+        "values": ticket_data.values.tolist()
+    })
+
 
 if __name__ == "__main__":
     app.run(debug=True)

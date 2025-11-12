@@ -1,15 +1,19 @@
 document.addEventListener('DOMContentLoaded', () => {
-
     const chartButtons = document.querySelectorAll('.chart-options button');
     const startDateInput = document.getElementById('start-date');
+    const ticketDateInput = document.getElementById('ticket-date');
 
-    // Set default date to TODAY
-    startDateInput.value = new Date().toISOString().split('T')[0];
+    // Default date = today
+    const today = new Date().toISOString().split('T')[0];
+    startDateInput.value = today;
+    ticketDateInput.value = today;
 
-    // Load default chart (week)
+    // Load default data
     loadChart('week', startDateInput.value);
+    loadTodayWidgets();
+    loadTicketPie(ticketDateInput.value);
 
-    // Handle range buttons
+    // Handle attendance range buttons
     chartButtons.forEach(btn => {
         btn.addEventListener('click', () => {
             chartButtons.forEach(b => b.classList.remove('active'));
@@ -18,15 +22,18 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Handle date change
+    // Handle attendance date change
     startDateInput.addEventListener('change', () => {
         const activeBtn = document.querySelector('.chart-options button.active');
         loadChart(activeBtn.dataset.range, startDateInput.value);
     });
 
-    // Load “Current day” + “Tomorrow”
-    loadTodayWidgets();
+    // Handle ticket pie date change
+    ticketDateInput.addEventListener('change', () => {
+        loadTicketPie(ticketDateInput.value);
+    });
 });
+
 
 async function loadChart(range = 'week', date) {
     try {
@@ -65,7 +72,6 @@ async function loadChart(range = 'week', date) {
         const config = { responsive: true, displayModeBar: false };
 
         Plotly.newPlot(chartEl, [trace], layout, config);
-
     } catch (error) {
         console.error('Error loading chart:', error);
     }
@@ -85,4 +91,40 @@ async function loadTodayWidgets() {
     document.querySelector(".tomorrow .content-box p:first-child").textContent = data.tomorrow.date;
     document.querySelector(".tomorrow .visitor-count").textContent =
         (data.tomorrow.visitors?.toLocaleString() || "No data") + " Visitors";
+}
+
+
+async function loadTicketPie(date) {
+    try {
+        const res = await fetch(`/api/tickets?date=${date}`);
+        const data = await res.json();
+        const chartEl = document.getElementById('ticketPieChart');
+
+        if (!data.values || data.values.length === 0) {
+            chartEl.innerHTML = '<p>No ticket data available for this date.</p>';
+            return;
+        }
+
+        const trace = {
+            labels: data.labels,
+            values: data.values,
+            type: 'pie',
+            textinfo: 'label+percent',
+            hoverinfo: 'label+value+percent',
+            hole: 0.3
+        };
+
+        const layout = {
+            paper_bgcolor: '#2b2b2b',
+            plot_bgcolor: '#2b2b2b',
+            font: { color: '#000000', family: 'Arial, sans-serif' },
+            margin: { t: 40, b: 20, l: 20, r: 20 }
+        };
+
+        const config = { responsive: true, displayModeBar: false };
+
+        Plotly.newPlot(chartEl, [trace], layout, config);
+    } catch (err) {
+        console.error('Error loading ticket pie:', err);
+    }
 }
