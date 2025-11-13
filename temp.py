@@ -1,310 +1,217 @@
-
-from flask import Flask, request, jsonify
-import joblib
-import numpy as np
-import sqlite3
-from datetime import datetime, date, timedelta
 import pandas as pd
+import xgboost as xgb
+import lightgbm as lgb
+import pickle
+from datetime import datetime, timedelta
 import openmeteo_requests
 import requests_cache
 from retry_requests import retry
+import numpy as np
 import os
 
-# === File paths ===
-PROCESSED_CSV = "data/processed/processed_merge.csv"
-MODEL_PATH = "data/processed/model.pkl"
-MODEL_PATH = "data/processed/RFRmodel.pkl"
-HOLIDAYS_CSV = "data/processed/processed_holidays.csv"
-OUTPUT_DIR = "data/predictions/"
-os.makedirs(OUTPUT_DIR, exist_ok=True)
+MODEL_PATH = "data/processed/lgbm_model.pkl"
+PROCESSED_DATA_PATH = "data/processed/processed_merge.csv"
+HOLIDAY_DATA_PATH = "data/raw/Holidays 2023-2026 Netherlands and Germany.xlsx"
+CAMPAIGN_DATA_PATH = "data/raw/campaings.xlsx"
+PREDICTIONS_DIR = "data/predictions/"
+os.makedirs(PREDICTIONS_DIR, exist_ok=True)
 
-DATE = date.today()
-
-# === Fetch Open-Meteo data ===
-def get_openmeteo():
+def get_openmeteo_for_future(days=16):
     cache_session = requests_cache.CachedSession(".cache", expire_after=3600)
     retry_session = retry(cache_session, retries=5, backoff_factor=0.2)
     openmeteo = openmeteo_requests.Client(session=retry_session)
 
     url = "https://api.open-meteo.com/v1/forecast"
     params = {
-        "latitude": 52.7862,
-        "longitude": 6.8917,
-        "daily": ["temperature_2m_max", "temperature_2m_min", "precipitation_sum"], #"rain_sum"
-        "forecast_days": 16
+        "latitude": 52.7862, "longitude": 6.8917,
+        "daily": ["temperature_2m_mean", "precipitation_sum"],
+        "forecast_days": days
     }
-
+    
     responses = openmeteo.weather_api(url, params=params)
     response = responses[0]
     daily = response.Daily()
 
     daily_data = {
-        "date": pd.date_range(
-            start=pd.to_datetime(daily.Time(), unit="s", utc=True),
-            end=pd.to_datetime(daily.TimeEnd(), unit="s", utc=True),
-            freq=pd.Timedelta(seconds=daily.Interval()),
-            inclusive="left",
-        ),
-        "temp_max": daily.Variables(0).ValuesAsNumpy(),
-        "temp_min": daily.Variables(1).ValuesAsNumpy(),
-        "precipitation": daily.Variables(2).ValuesAsNumpy(),
-        # "rain": daily.Variables(3).ValuesAsNumpy(),
+        "date": pd.to_datetime(daily.Time(), unit="s", utc=True).tz_convert(None).date,
+        "temperature": daily.Variables(0).ValuesAsNumpy(),
+        "precipitation": daily.Variables(1).ValuesAsNumpy(),
     }
-
-    df_weather = pd.DataFrame(daily_data)
-    df_weather["temperature"] = ((df_weather["temp_max"] + df_weather["temp_min"]) / 2).astype("float64").round(1)
-    df_weather["precipitation"] = df_weather["precipitation"].astype("float64").round(1)
-    #df_weather["rain"] = df_weather["rain"].astype("float64").round(1)
-    df_weather["date"] = pd.to_datetime(df_weather["date"]).dt.tz_convert(None)
-    df_weather.drop(columns=["temp_max", "temp_min"], inplace=True)
-
-    pd.options.display.float_format = "{:.1f}".format
-
-    return df_weather
-
-
-# === Separate columns into categories ===
-def seperating(processed_df):
-    api = []
-    ticket = []
-    holiday = []
-
-    for col in processed_df.columns:
-        if col in ["temperature", "precipitation"]:     # removed "rain"
-            api.append(col)
-        elif col.startswith("ticket_") and col != "ticket_num":
-            ticket.append(col)
-        else:
-            holiday.append(col)
-
-    print("--------------------------------------")
-    print(ticket)
-    print("--------------------------------------")
-
-    return api, ticket, holiday
+    
+    return pd.DataFrame(data=daily_data)
 
 
 def predict_next_365_days():
-    print("Loading model and data...")
-    model = joblib.load(MODEL_PATH)
+    # --- Load Initial Data ---
+    print("Loading all initial data...")
+    try:
+        with open(MODEL_PATH, 'rb') as f: model = pickle.load(f)
+        holiday_og_df = pd.read_excel(HOLIDAY_DATA_PATH)
+        camp_og_df = pd.read_excel(CAMPAIGN_DATA_PATH)
+    except Exception as e:
+        print(f"CRITICAL ERROR loading initial files: {e}"); return
 
-    openmeteo_df = get_openmeteo()
-    processed_df = pd.read_csv(PROCESSED_CSV)
-    holidays_df = pd.read_csv(HOLIDAYS_CSV)
-    holidays_df["date"] = pd.to_datetime(holidays_df["date"]).dt.date
+    # --- Define Column Sets and Get Last Date ---
+    print("Defining column sets...")
+    holiday_og_df.columns = ["NLNoord", "NLMidden", "NLZuid", "Niedersachsen", "Nordrhein-Westfalen", "date"]
+    camp_og_df.columns = ["year", "week", "promo_NLNoord", "promo_NLMidden", "promo_NLZuid", "promo_Nordrhein-Westfalen", "promo_Niedersachsen"]
+    
+    with open(PROCESSED_DATA_PATH, 'r') as f: header = f.readline().strip().split(',')
+    ticket_type_cols = [col for col in header if col.startswith('ticket_')]
+    all_ticket_names = [col.replace('ticket_', '') for col in ticket_type_cols]
+    if not all_ticket_names: print("CRITICAL ERROR: 'all_ticket_names' list is empty."); return
+    print(f"Found {len(all_ticket_names)} unique ticket names.")
 
-    api_cols, ticket_cols, holiday_cols = seperating(processed_df)
+    with open(PROCESSED_DATA_PATH, 'rb') as f:
+        try:
+            f.seek(-2, os.SEEK_END)
+            while f.read(1) != b'\n': f.seek(-2, os.SEEK_CUR)
+        except OSError: f.seek(0)
+        last_line = f.readline().decode()
+    last_year, last_month, last_day = map(int, last_line.split(',')[:3])
+    last_known_date = pd.to_datetime(f"{last_year}-{last_month}-{last_day}")
 
-    if "date" not in processed_df.columns:
-        if {"year", "month", "day"}.issubset(processed_df.columns):
-            processed_df["date"] = pd.to_datetime(processed_df[["year", "month", "day"]])
-        elif {"year", "week"}.issubset(processed_df.columns):
-            processed_df["date"] = processed_df.apply(
-                lambda r: pd.to_datetime(f"{int(r['year'])}-W{int(r['week']):02d}-1", format="%G-W%V-%u"),
-                axis=1
-            )
-        else:
-            raise KeyError("No suitable columns found for 'date'.")
+    # --- Prepare Historical Data ---
+    print("Preparing historical datasets...")
+    history_start_date = last_known_date - timedelta(days=30)
+    required_history_cols = ['year', 'month', 'day', 'ticket_num'] + ticket_type_cols
+    required_weather_cols = ['month', 'day', 'temperature', 'precipitation']
+    all_required_cols = list(set(required_history_cols + required_weather_cols))
 
-    processed_df["year"] = processed_df["date"].dt.year
-    processed_df["month"] = processed_df["date"].dt.month
-    processed_df["week"] = processed_df["date"].dt.isocalendar().week
-    processed_df["day"] = processed_df["date"].dt.day
-    processed_df["weekday"] = processed_df["date"].dt.weekday
+    recent_history_chunks = []
+    weather_avg_chunks = []
+    for chunk in pd.read_csv(PROCESSED_DATA_PATH, chunksize=100000, usecols=all_required_cols):
+        chunk['date'] = pd.to_datetime(chunk[['year', 'month', 'day']])
+        recent_chunk = chunk[chunk['date'] >= history_start_date]
+        if not recent_chunk.empty: recent_history_chunks.append(recent_chunk)
+    
+    if not recent_history_chunks: print("Error: No recent data found."); return
+    recent_history_df = pd.concat(recent_history_chunks)
+    weather_avg_chunks.append(chunk)
+    
+    history_df = pd.melt(recent_history_df, id_vars=['date', 'ticket_num'], value_vars=ticket_type_cols, var_name='ticket_name_encoded', value_name='is_present')
+    history_df = history_df[history_df['is_present'] == 1]
+    history_df['ticket_name'] = history_df['ticket_name_encoded'].str.replace('ticket_', '', regex=False)
+    history_df = history_df[["date", "ticket_name", "ticket_num"]]
+    print("All data prepared.")
+    
+    historical_weather = pd.concat(weather_avg_chunks).groupby(['month', 'day']).mean().reset_index()
+    weather_future_df = get_openmeteo_for_future()
+    holiday_region_cols = ["NLNoord", "NLMidden", "NLZuid", "Niedersachsen", "Nordrhein-Westfalen"]
+    all_holidays = holiday_og_df.melt(id_vars=['date'], value_vars=holiday_region_cols, var_name='region', value_name='holiday')
+    holiday_dates = pd.to_datetime(pd.Series(all_holidays.dropna()['date'].unique())).sort_values()
+    summer_dates = all_holidays[all_holidays['holiday'].str.contains("Zomervakantie", na=False)]['date'].unique()
+    print("All data prepared.")
 
-    # avg_weather = (
-    #     processed_df.groupby(["month", "day"])[["temperature", "rain", "precipitation"]]
-    #     .mean()
-    #     .reset_index()
-    # )
+    unique_holidays = all_holidays['holiday'].dropna().unique()
+    possible_holiday_features = {
+        f"{region}_{holiday}".replace(' ', '_')
+        for region in holiday_region_cols
+        for holiday in unique_holidays
+    }
+    holiday_feature_names = [name for name in model.feature_name_ if name in possible_holiday_features]
 
-
-    avg_rain_by_day = (
-        processed_df.groupby(["month", "day"])[["rain"]]
-        .mean()
-        .reset_index()
-        .rename(columns={"rain": "avg_rain"})
-    )
-    #print(avg_weather)
-
-    print("Starting 365-day prediction loop...")
-    all_days_rows = []
+    # --- 4. Main Prediction Loop ---
+    print("Starting iterative prediction loop...")
+    all_predictions = []
+    loop_history_df = history_df.copy()
 
     for d in range(365):
-        current_date = DATE + timedelta(days=d)
+        current_date = last_known_date + timedelta(days=d + 1)
+        predictions_for_today = {}
+        history_updates_for_today = []
+        # --- Create Features for the Current Day ---
+        # A. Basic Date Features
+        date_features = {'year': current_date.year, 'month': current_date.month, 'day': current_date.day, 'weekday': current_date.weekday(), 'week': current_date.isocalendar().week}
+        date_features['is_weekend'] = 1 if date_features['weekday'] >= 5 else 0
 
-        # Weather data
-        match = openmeteo_df[openmeteo_df["date"].dt.date == current_date]
-        if not match.empty:
-            temperature = match["temperature"].iloc[0]
-            #rain = match["rain"].iloc[0]
-            #precipitation = match["precipitation"].iloc[0]
-            #print(f"if not match {temperature}, {rain}, {precipitation}")
-        else:
-            temp_avg = processed_df[
-                (processed_df["month"] == current_date.month) &
-                (processed_df["day"] == current_date.day)
-            ]["temperature"].mean()
-            temperature = temp_avg if not np.isnan(temp_avg) else np.nan
-            
-        rain_match = avg_rain_by_day[
-            (avg_rain_by_day["month"] == current_date.month) &
-            (avg_rain_by_day["day"] == current_date.day)
-        ]
+        # B. Holiday & Payday Features
+        next_h = holiday_dates[holiday_dates >= current_date].iloc[0]
+        prev_h = holiday_dates[holiday_dates <= current_date].iloc[-1]
+        date_features['days_until_holiday'] = (next_h - current_date).days
+        date_features['days_since_holiday'] = (current_date - prev_h).days
+        date_features['is_month_start'] = 1 if date_features['day'] in [1, 2, 3] else 0
+        date_features['is_month_mid'] = 1 if date_features['day'] in [14, 15, 16] else 0
+        date_features['is_month_end'] = 1 if current_date.is_month_end else 0
 
-        #precipitation = float(rain_match["avg_rain"].iloc[0]) if not rain_match.empty else 0.0
+        # C. Weather Features (use forecast or historical average)
+        weather_match = weather_future_df[weather_future_df['date'] == current_date.date()]
+        if not weather_match.empty:
+            weather_features = weather_match.to_dict(orient='records')[0]
+        else: # Fallback to historical average
+            avg_weather = historical_weather[(historical_weather['month'] == current_date.month) & (historical_weather['day'] == current_date.day)]
+            weather_features = avg_weather.to_dict(orient='records')[0] if not avg_weather.empty else {'temperature': 10.0, 'precipitation': 0.1}
 
-        if not rain_match.empty:
-            print("if not")
-            precipitation = float(rain_match["avg_rain"].iloc[0])
-        else:
-            print("else")
-            precipitation = float(0.0)
-
-            # avg = avg_weather[(avg_weather["month"] == current_date.month) & (avg_weather["day"] == current_date.day)]
-            # temperature = avg["temperature"].iloc[0] if not avg.empty else np.nan
-            # rain = avg["rain"].iloc[0] if not avg.empty else np.nan
-            # precipitation = avg["precipitation"].iloc[0] if not avg.empty else np.nan
-            #print(f"else {temperature}, {rain}, {precipitation}")
-
-
-        # Holiday data
-        match_holiday = holidays_df[holidays_df["date"] == current_date]
-        if match_holiday.empty:
-            print(f"⚠ Missing holiday data for {current_date}, skipping day.")
-            continue
-
-        holiday_part = match_holiday.iloc[0].to_dict()
-        holiday_part.pop("date", None)
-        holiday_part.update({
-            "year": current_date.year,
-            "month": current_date.month,
-            "week": current_date.isocalendar().week,
-            "day": current_date.day,
-            "weekday": current_date.weekday(),
-        })
-
-
-        # TICKET PART   
-        # Prepare input rows for all ticket types, gather predictions per ticket
-        predictions_per_ticket = {}
-        for ticket_name in ticket_cols:
-            ticket_part = {col: 0 for col in ticket_cols}
-            ticket_part[ticket_name] = 1
-
-            row = {
-                "temperature": temperature,
-                #"rain": rain,
-                "precipitation": precipitation,
-                **holiday_part,
-                **ticket_part
-            }
-
-            input_df = pd.DataFrame([row])
-
-            if hasattr(model, "feature_names_in_"):
-                expected_features = model.feature_names_in_
-                input_df = input_df.reindex(columns=expected_features, fill_value=0)
-
-            predicted_total = model.predict(input_df)[0]
-            predictions_per_ticket[ticket_name] = predicted_total
-
-        total_visitors = sum(predictions_per_ticket.values())
-
-        if (current_date.day == 31 and current_date.month == 12) or (current_date.day == 1 and current_date.month == 1):
-            print("oud en nieuwjaarsdag")
-            daily_summary = {
-                "date": current_date,
-                "temperature": float(round(temperature, 1)),
-                #"rain": float(round(rain, 1)),
-                "precipitation": float(round(precipitation, 1)),
-                "total_visitors": 0,
-                **{ticket: 0 for ticket in ticket_cols},
-                **holiday_part , # Include holiday columns for display on dashboard
-                "year": current_date.year,
-                "month": current_date.month,
-                "week": current_date.isocalendar().week,
-                "day": current_date.day,
-                "weekday": current_date.weekday()
-        }    
-        else:
-            print("normal cases")
-            daily_summary = {
-                "date": current_date,
-                "temperature": round(temperature, 1),
-                #"rain": round(rain, 1),
-                "precipitation": round(precipitation, 1),
-                "total_visitors": round(total_visitors, 0),
-                **predictions_per_ticket,
-                **holiday_part , # Include holiday columns for display on dashboard
-                "year": current_date.year,
-                "month": current_date.month,
-                "week": current_date.isocalendar().week,
-                "day": current_date.day,
-                "weekday": current_date.weekday()
-            }
+        # D. Campaign & Event Features
+        campaign_features = {}
+        campaign_today = camp_og_df[(camp_og_df['year'] == date_features['year']) & (camp_og_df['week'] == date_features['week'])]
+        if not campaign_today.empty:
+            # Assuming your campaign columns are named 'promo_NLNoord', etc.
+            promo_cols = [col for col in camp_og_df.columns if col.startswith('promo_')]
+            for col in promo_cols:
+                campaign_features[col] = campaign_today[col].iloc[0]
         
-        all_days_rows.append(daily_summary)
-        # for day_dict in all_days_rows:
-        #     print(f"Date: {day_dict["date"]}, {day_dict["total_visitors"]}")
-        print(
-            f"{daily_summary['date']} | Temp: {daily_summary['temperature']:.1f}°C | "
-            #f"Rain: {daily_summary['rain']:.1f} | "
-            f"Precipitation: {daily_summary['precipitation']:.1f} | "
-            f"Total Visitors: {daily_summary['total_visitors']:.0f}"
-        )
-
-        # Suppose 'ticket_cols' is your list of ticket type column names
-
-        # for day_dict in all_days_rows[:10]:  # First 10 days
-        #     print(f"Date: {day_dict['date']}")
-        #     # Collect ticket types and their predictions for the day
-        #     ticket_predictions = [(ticket, day_dict[ticket]) for ticket in ticket_cols]
-        #     # Sort by prediction value, descending
-        #     ticket_predictions.sort(key=lambda x: x[1], reverse=True)
-        #     # Print sorted results
-        #     for ticket, value in ticket_predictions:
-        #         print(f"  {ticket}: {value:.1f}")
-        #     print("-" * 30)
-
+        # Get summer vacation flag
+        date_features['is_summer_vacation'] = 1 if current_date in summer_dates else 0
         
+        # Get interaction feature
+        date_features['temp_x_weekend'] = weather_features['temperature'] * date_features['is_weekend']
+        
+        # Get one-hot-encoded holiday features
+        holiday_one_hot_features = {}
+        
+        # Find which holiday (if any) is on the current_date
+        current_holiday_info = all_holidays[all_holidays['date'] == current_date].dropna()
+        for col_name in holiday_feature_names:
+            holiday_one_hot_features[col_name] = 0 # Default to 0
+        
+        if not current_holiday_info.empty:
+            for index, row in current_holiday_info.iterrows():
+                feature_name = f"{row['region']}_{row['holiday']}".replace(' ', '_')
+                if feature_name in holiday_one_hot_features:
+                    holiday_one_hot_features[feature_name] = 1
 
+        print(f"Starting prediction for {current_date.date()}...")
+        for ticket_name in all_ticket_names:
+            try:
+                # Lag features must be created inside this ticket-specific loop
+                ticket_history = loop_history_df[loop_history_df["ticket_name"] == ticket_name].set_index('date')['ticket_num']
+                lag_features = {}
+                lags = [1, 7, 14]
+                for lag in lags: lag_features[f'sales_lag_{lag}'] = ticket_history.get(current_date - timedelta(days=lag), 0)
+                rolling_window = ticket_history.loc[:current_date - timedelta(days=1)].tail(7)
+                lag_features['sales_rolling_avg_7'] = round(rolling_window.mean(), 2) if not rolling_window.empty else 0.0
+                lag_features['sales_rolling_std_7'] = round(rolling_window.std(), 2) if not rolling_window.empty else 0.0
 
-            # Round all relevant columns to one decimal
-        pd.options.display.float_format = "{:.1f}".format
+                # Assemble the full input row for prediction
+                input_row = {**date_features, **weather_features, **lag_features, **campaign_features, **holiday_one_hot_features}
+                for tt_col in ticket_type_cols:
+                    input_row[tt_col] = 1 if tt_col == f'ticket_{ticket_name}' else 0
+                
+                input_df = pd.DataFrame([input_row]).reindex(columns=model.feature_name_, fill_value=0)
+                predicted_sales = model.predict(input_df)[0]
+                
+                final_prediction = max(0, round(predicted_sales))
+                if final_prediction > 0:
+                    all_predictions.append({"date": current_date, "ticket_name": ticket_name, "predicted_sales": final_prediction})
+                
+                history_value = max(0.01, predicted_sales)
+                new_history_row = pd.DataFrame([{"date": current_date, "ticket_name": ticket_name, "ticket_num": history_value}])
+                loop_history_df = pd.concat([loop_history_df, new_history_row], ignore_index=True)
+            except Exception as e:
+                print(f"Error on day {d+1} for ticket {ticket_name}: {e}"); continue
+        
+    # --- Save Final Results ---
+    if not all_predictions:
+        print("WARNING: No positive sales were predicted. The final CSV will be empty.")
+    else:
+        print("Forecast generation complete.")
+        forecast_df = pd.DataFrame(all_predictions)
+        filename = f"forecast_365_days_{datetime.now().strftime('%Y-%m-%d')}.csv"
+        output_path = os.path.join(PREDICTIONS_DIR, filename)
+        forecast_df.to_csv(output_path, index=False)
+        print(f"✅ Forecast saved successfully to {output_path}")
 
-            # Set float columns
-        float_cols = ["temperature", "precipitation", "total_visitors"] + ticket_cols  
-        df = pd.DataFrame(all_days_rows)
-        for col in float_cols:
-            if col in df.columns:
-                df[col] = pd.to_numeric(df[col], errors='coerce')
-        df["date"] = df["date"].astype(str)
-
-        #Remove 'rain' from column order for CSV
-        column_order = [
-            "date", "temperature", "precipitation", "total_visitors",
-            *ticket_cols, *holiday_cols,
-            "year", "month", "week", "day", "weekday"
-        ]
-
-# PROMOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
-
-#  if any of the event is not 0:
-#        for loop through the events and set all to 0
-#        predict again
-#        compare the difference
-#        add the difference to "event_impact" column
-# else:
-#        set "event_impact" column to 0
-
-    # Save all days in one CSV file for dashboard ease
-    df = df.reindex(columns=column_order)
-    output_file = os.path.join(OUTPUT_DIR, "pre - rain temp app predictions_365days.csv")
-    os.makedirs(os.path.dirname(output_file), exist_ok=True)
-    pd.DataFrame(all_days_rows).to_csv(output_file, index=False, float_format="%.1f")
-    print(f"✅ Saved all 365-day predictions to {output_file}")
-    print("✅ All 365-day predictions complete.")
 
 
 if __name__ == "__main__":
