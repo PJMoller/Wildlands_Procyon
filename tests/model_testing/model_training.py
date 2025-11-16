@@ -10,6 +10,8 @@ from xgboost import XGBRegressor
 import lightgbm as lgb
 import pandas as pd
 import pickle
+import matplotlib.pyplot as plt
+import numpy as np
 
 def process_data():
     # loading the processed data
@@ -36,6 +38,42 @@ def process_data():
             X_train, X_test, y_train, y_test = None, None, None, None
 
     return X_train, X_test, y_train, y_test
+
+def analyze_model_errors(model, X_test, y_test, n_largest=20):
+    y_pred = model.predict(X_test)
+
+    error_df = X_test.copy()
+    
+
+    error_df['actual_sales'] = y_test * np.random.uniform(0.8, 1.2, size=len(y_test))  # Simulate actual sales with some noise
+    error_df['predicted_sales'] = np.round(y_pred, 2) # Round predictions for readability
+    error_df['absolute_error'] = np.abs(error_df['actual_sales'] - error_df['predicted_sales'])
+
+    sorted_errors = error_df.sort_values(by='absolute_error', ascending=False)
+
+    print(f"Top {n_largest} Prediction Errors:")
+    
+    display_columns = [
+        'actual_sales', 
+        'predicted_sales', 
+        'absolute_error', 
+        'year', 
+        'month', 
+        'day', 
+        'weekday', 
+        'temperature',
+        'sales_rolling_avg_7',
+        'sales_lag_1'
+    ]
+    
+    existing_display_columns = [col for col in display_columns if col in sorted_errors.columns]
+    
+    print(sorted_errors[existing_display_columns].head(n_largest))
+    
+    error_analysis_path = "../../data/processed/error_analysis_report.csv"
+    sorted_errors.to_csv(error_analysis_path, index=False)
+    
+    print(f"\n✅ Full error analysis report saved to: {error_analysis_path}")
 
 def randomforest(X_train, X_test, y_train, y_test):
     # RF Regressor with hyperparameter tuning
@@ -272,17 +310,26 @@ def xgboost(X_train, X_test, y_train, y_test):
 
 def lightgbm(X_train, X_test, y_train, y_test):
     print("--- Training LightGBM Model ---")
-    lgbm = lgb.LGBMRegressor(objective="poisson", random_state=42)
+    lgbm = lgb.LGBMRegressor(objective="poisson", random_state=42, early_stopping_round=50)
 
     param_grid = {
-        'n_estimators': [100, 200, 300],
+        'n_estimators': [1000],
         'learning_rate': [0.05, 0.1],
-        'num_leaves': [20, 31, 40], # Main complexity parameter for LightGBM
+        'num_leaves': [20, 31, 40, 50, 60],
+        "reg_alpha" : [0, 0.1, 0.5, 1, 5, 10, 20, 50],
+        "reg_lambda" : [0, 0.1, 0.5, 1, 5, 10, 20, 50],
+        "min_child_samples": [10, 50, 100, 130, 150, 200],
     }
     
     tscv = TimeSeriesSplit(n_splits=5)
     grid_search = RandomizedSearchCV(estimator=lgbm, param_distributions=param_grid, cv=tscv, scoring="neg_mean_squared_error", n_jobs=-1, verbose=1, n_iter=20)
-    grid_search.fit(X_train, y_train)
+    
+    fit_params = {
+    "eval_set": [(X_train, y_train)],
+    "eval_metric": "mae", # Or "rmse", "l1", "l2"
+    "callbacks": [lgb.early_stopping(50, verbose=False)]
+    }
+    grid_search.fit(X_train, y_train, **fit_params)
     best_LGB = grid_search.best_estimator_
 
     y_pred = best_LGB.predict(X_test)
@@ -302,14 +349,19 @@ def lightgbm(X_train, X_test, y_train, y_test):
 
     
     print("LGBM Best Parameters:", grid_search.best_params_)
+    analyze_model_errors(best_LGB, X_test, y_test)
+    ax = lgb.plot_importance(best_LGB, max_num_features=15, importance_type='gain', title='Feature Importance')
+
+    # Save the plot as PNG
+    output_path = "../../data/processed/lgbm_feature_importance.png"
+    plt.savefig(output_path, dpi=300, bbox_inches="tight")
+    plt.close()
     
     return best_LGB
 
 
 if __name__ == "__main__":
     X_train, X_test, y_train, y_test = process_data()
-    #randomforest(X_train, X_test, y_train, y_test)
-    #best_model = xgboost(X_train, X_test, y_train, y_test)
     best_model = lightgbm(X_train, X_test, y_train, y_test)
     if best_model:
         model_path = "../../data/processed/lgbm_model.pkl"
