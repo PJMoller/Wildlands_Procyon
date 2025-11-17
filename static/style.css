@@ -384,3 +384,29 @@ h3 {
     margin-bottom: 8px;
     font-size: 0.85rem;
 }
+/* ===== SLIDER PAGE LAYOUt ===== */
+body.slider-page .container {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 20px;
+}
+
+body.slider-page .current-day {
+    grid-column: 1 / 2;
+    grid-row: 1 / 3;
+}
+
+body.slider-page .events {
+    grid-column: 2 / 3;
+    grid-row: 1 / 2;
+}
+
+body.slider-page .forecast {
+    grid-column: 2 / 3;
+    grid-row: 2 / 3;
+}
+
+body.slider-page .manual-link {
+    grid-column: 1 / 3;
+    grid-row: 3 / 4;
+}
