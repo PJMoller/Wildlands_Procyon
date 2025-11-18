@@ -309,3 +309,15 @@ def predict_next_365_days():
 
 if __name__ == "__main__":
     predict_next_365_days()
+
+
+
+# TODO 
+"""
+- events
+- promo/campaign
+- wildnights/wildsummer fix
+- precipitation / rain fix
+
+
+"""
