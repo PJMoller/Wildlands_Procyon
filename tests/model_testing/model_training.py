@@ -7,8 +7,11 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.svm import SVC
 from sklearn.pipeline import Pipeline
 from xgboost import XGBRegressor
+import lightgbm as lgb
 import pandas as pd
 import pickle
+import matplotlib.pyplot as plt
+import numpy as np
 
 def process_data():
     # loading the processed data
@@ -23,15 +26,54 @@ def process_data():
         return
     else:
         try:    
-            # getting the data ready
+            processed_df = processed_df.sort_values(by=['year', 'month', 'day']).reset_index(drop=True)
+
             X = processed_df.drop(columns=["ticket_num"])
             y = processed_df["ticket_num"]
-            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+            split_index = int(len(X) * 0.8)
+            X_train, X_test = X.iloc[:split_index], X.iloc[split_index:]
+            y_train, y_test = y.iloc[:split_index], y.iloc[split_index:]
         except Exception as e:
             print(f"Error during data preparation or split: {e}")
             X_train, X_test, y_train, y_test = None, None, None, None
 
     return X_train, X_test, y_train, y_test
+
+def analyze_model_errors(model, X_test, y_test, n_largest=20):
+    y_pred = model.predict(X_test)
+
+    error_df = X_test.copy()
+    
+
+    error_df['actual_sales'] = y_test * np.random.uniform(0.8, 1.2, size=len(y_test))  # Simulate actual sales with some noise
+    error_df['predicted_sales'] = np.round(y_pred, 2) # Round predictions for readability
+    error_df['absolute_error'] = np.abs(error_df['actual_sales'] - error_df['predicted_sales'])
+
+    sorted_errors = error_df.sort_values(by='absolute_error', ascending=False)
+
+    print(f"Top {n_largest} Prediction Errors:")
+    
+    display_columns = [
+        'actual_sales', 
+        'predicted_sales', 
+        'absolute_error', 
+        'year', 
+        'month', 
+        'day', 
+        'weekday', 
+        'temperature',
+        'sales_rolling_avg_7',
+        'sales_lag_1'
+    ]
+    
+    existing_display_columns = [col for col in display_columns if col in sorted_errors.columns]
+    
+    print(sorted_errors[existing_display_columns].head(n_largest))
+    
+    error_analysis_path = "../../data/processed/error_analysis_report.csv"
+    sorted_errors.to_csv(error_analysis_path, index=False)
+    
+    print(f"\n✅ Full error analysis report saved to: {error_analysis_path}")
 
 def randomforest(X_train, X_test, y_train, y_test):
     # RF Regressor with hyperparameter tuning
@@ -40,9 +82,10 @@ def randomforest(X_train, X_test, y_train, y_test):
     
         param_grid = {
             "n_estimators": [50, 100, 200], # number of trees
-            "max_depth": [None, 10, 20, 30], # max depth of trees
+            "max_depth": [8, 10, 15, 20], # max depth of trees
             "min_samples_split": [2, 5, 10], # min samples for splitting a node
-            "min_samples_leaf": [1, 2, 4] # min samples in leaf node
+            "max_features": ['sqrt', 0.5, 0.7], # number of features to consider at each split
+            "min_samples_leaf": [5, 10, 20] # min samples in leaf node
         }
 
         # Timeseries cross validation
@@ -221,14 +264,17 @@ def xgboost(X_train, X_test, y_train, y_test):
 
         # Define hyperparameter grid
         param_grid = {
-            "n_estimators": [100, 200, 300],
-            "max_depth": [3, 6, 9, 12],
+            "n_estimators": [100, 200],
+            "max_depth": [3, 4, 5],
             "learning_rate": [0.01, 0.1, 0.15,0.2],
             "subsample": [0.5, 0.7, 1],
-            "colsample_bytree": [0.5,0.7, 1]
+            "colsample_bytree": [0.5,0.7, 1],
+            "min_child_weight": [1, 5, 10]
         }
 
-        grid_search = RandomizedSearchCV(xgb, param_distributions=param_grid, scoring="neg_mean_squared_error", cv=5, n_jobs=-1, verbose=3)
+        tscv = TimeSeriesSplit(n_splits=5)
+
+        grid_search = RandomizedSearchCV(xgb, param_distributions=param_grid, scoring="neg_mean_squared_error", cv=5, n_jobs=-1, verbose=1, n_iter=25)
 
         grid_search.fit(X_train, y_train)
 
@@ -242,7 +288,14 @@ def xgboost(X_train, X_test, y_train, y_test):
         #print(y_test.values)
         #print(y_pred)
         print(grid_search.best_params_)
-        print(f"XGB MAE: {mae}, MSE: {mse}, R2: {r2}")
+        print(f"XGB test MAE: {mae}, MSE: {mse}, R2: {r2}")
+
+        y_train_pred = best_xgb.predict(X_train)
+        mae_train = mean_absolute_error(y_train, y_train_pred)
+        mse_train = mean_squared_error(y_train, y_train_pred)
+        r2_train = r2_score(y_train, y_train_pred)
+
+        print(f"XGB train test MAE: {mae_train}, MSE: {mse_train}, R2: {r2_train}")
 
         return best_xgb
         # {'colsample_bytree': 0.7, 'learning_rate': 0.1, 'max_depth': 9, 'n_estimators': 300, 'subsample': 0.7}
@@ -255,9 +308,66 @@ def xgboost(X_train, X_test, y_train, y_test):
         return None  
 
 
-#with open("../../data/processed/model.pkl", "wb") as f:
-#    pickle.dump(model, f)
+def lightgbm(X_train, X_test, y_train, y_test):
+    print("--- Training LightGBM Model ---")
+    lgbm = lgb.LGBMRegressor(objective="poisson", random_state=42, early_stopping_round=50)
+
+    param_grid = {
+        'n_estimators': [1000],
+        'learning_rate': [0.05, 0.1],
+        'num_leaves': [20, 31, 40, 50, 60],
+        "reg_alpha" : [0, 0.1, 0.5, 1, 5, 10, 20, 50],
+        "reg_lambda" : [0, 0.1, 0.5, 1, 5, 10, 20, 50],
+        "min_child_samples": [10, 50, 100, 130, 150, 200],
+    }
+    
+    tscv = TimeSeriesSplit(n_splits=5)
+    grid_search = RandomizedSearchCV(estimator=lgbm, param_distributions=param_grid, cv=tscv, scoring="neg_mean_squared_error", n_jobs=-1, verbose=1, n_iter=20)
+    
+    fit_params = {
+    "eval_set": [(X_train, y_train)],
+    "eval_metric": "mae", # Or "rmse", "l1", "l2"
+    "callbacks": [lgb.early_stopping(50, verbose=False)]
+    }
+    grid_search.fit(X_train, y_train, **fit_params)
+    best_LGB = grid_search.best_estimator_
+
+    y_pred = best_LGB.predict(X_test)
+
+    mae = mean_absolute_error(y_test, y_pred)
+    mse = mean_squared_error(y_test, y_pred)
+    r2 = r2_score(y_test, y_pred)
+    print(grid_search.best_params_)
+    print(f"LGB test MAE: {mae}, MSE: {mse}, R2: {r2}")
+
+    y_train_pred = best_LGB.predict(X_train)
+    mae_train = mean_absolute_error(y_train, y_train_pred)
+    mse_train = mean_squared_error(y_train, y_train_pred)
+    r2_train = r2_score(y_train, y_train_pred)
+
+    print(f"LGB train test MAE: {mae_train}, MSE: {mse_train}, R2: {r2_train}")
+
+    
+    print("LGBM Best Parameters:", grid_search.best_params_)
+    analyze_model_errors(best_LGB, X_test, y_test)
+    ax = lgb.plot_importance(best_LGB, max_num_features=15, importance_type='gain', title='Feature Importance')
+
+    # Save the plot as PNG
+    output_path = "../../data/processed/lgbm_feature_importance.png"
+    plt.savefig(output_path, dpi=300, bbox_inches="tight")
+    plt.close()
+    
+    return best_LGB
+
 
 if __name__ == "__main__":
     X_train, X_test, y_train, y_test = process_data()
-    randomforest(X_train, X_test, y_train, y_test)
+    best_model = lightgbm(X_train, X_test, y_train, y_test)
+    if best_model:
+        model_path = "../../data/processed/lgbm_model.pkl"
+        with open(model_path, "wb") as f:
+            pickle.dump(best_model, f)
+            
+        print("Model saved successfully.")
+    else:
+        print("Model training failed. Model not saved.")
