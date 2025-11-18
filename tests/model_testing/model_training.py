@@ -17,6 +17,15 @@ def process_data():
     # loading the processed data
     try:
         processed_df = pd.read_csv("../../data/processed/processed_merge.csv")
+        holiday_cols = [c for c in processed_df.columns if c.startswith("holiday_")]
+
+        for c in holiday_cols:
+            processed_df[c] = (
+                processed_df[c]
+                .map({True: 1, False: 0, "True": 1, "False": 0})  # handle bool and string
+                .fillna(0)
+                .astype("int8")
+            )
     except Exception as e:
         print(f"Error loading processed data: {e}")
         processed_df = pd.DataFrame()
@@ -313,13 +322,17 @@ def lightgbm(X_train, X_test, y_train, y_test):
     lgbm = lgb.LGBMRegressor(objective="poisson", random_state=42, early_stopping_round=50)
 
     param_grid = {
-        'n_estimators': [1000],
-        'learning_rate': [0.05, 0.1],
-        'num_leaves': [20, 31, 40, 50, 60],
-        "reg_alpha" : [0, 0.1, 0.5, 1, 5, 10, 20, 50],
-        "reg_lambda" : [0, 0.1, 0.5, 1, 5, 10, 20, 50],
-        "min_child_samples": [10, 50, 100, 130, 150, 200],
+        'n_estimators': [800, 1000],
+        'learning_rate': [0.01, 0.03, 0.05],
+        'num_leaves': [20, 35, 50],
+        'min_child_samples': [50, 100],
+        'reg_alpha': [1, 5, 10],
+        'reg_lambda': [5, 10, 20],
+        'bagging_fraction': [0.6, 0.8, 0.9],
+        'bagging_freq': [1, 5],
+        'feature_fraction': [0.6, 0.8, 0.9],
     }
+
     
     tscv = TimeSeriesSplit(n_splits=5)
     grid_search = RandomizedSearchCV(estimator=lgbm, param_distributions=param_grid, cv=tscv, scoring="neg_mean_squared_error", n_jobs=-1, verbose=1, n_iter=20)
@@ -333,6 +346,24 @@ def lightgbm(X_train, X_test, y_train, y_test):
     best_LGB = grid_search.best_estimator_
 
     y_pred = best_LGB.predict(X_test)
+    test_with_dates = X_test.copy()
+    test_with_dates['actual'] = y_test.values
+    test_with_dates['pred'] = y_pred
+
+    # Reconstruct date if you have year, month, day
+    test_with_dates['date'] = pd.to_datetime(
+        dict(year=test_with_dates['year'],
+            month=test_with_dates['month'],
+            day=test_with_dates['day'])
+    )
+
+    daily = test_with_dates.groupby('date')[['actual', 'pred']].sum()
+
+    wape_daily = (daily['actual'] - daily['pred']).abs().sum() / daily['actual'].abs().sum() * 100
+    print(f"Daily total WAPE: {wape_daily:.2f}%")
+    wape = np.sum(np.abs(y_test - y_pred)) / np.sum(np.abs(y_test)) * 100
+    print(f"LGB test WAPE vs actuals: {wape:.2f}%")
+
 
     mae = mean_absolute_error(y_test, y_pred)
     mse = mean_squared_error(y_test, y_pred)
