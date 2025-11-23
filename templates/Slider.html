@@ -68,6 +68,23 @@
             </div>
         </div>
     </div>
+    <script>
+const sliders = ['rain', 'weather', 'event', 'promo', 'holidays'];
+
+sliders.forEach(id => {
+    const range = document.getElementById(id);
+    const num = document.getElementById(id + '-num');
+
+    range.addEventListener('input', () => {
+        num.value = range.value;
+    });
+
+    num.addEventListener('input', () => {
+        range.value = num.value;
+    });
+});
+</script>
+
     <!-- 
         We can use that script for charts.
         IT was the one that kinda worked for me during Period 2 of Relai Bots for the pie charts. 
