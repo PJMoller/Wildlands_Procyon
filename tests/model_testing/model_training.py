@@ -94,8 +94,8 @@ def create_family_level_models(processed_df, feature_cols):
         X_val_fam = family_data[val_mask][feature_cols]
         y_val_fam = family_data[val_mask]['ticket_num']
         
-        if len(X_val_fam) == 0:
-            print(f"Skipping {family} - no validation data")
+        if len(X_val_fam) < 10:
+            print(f"Skipping {family} - not enough validation data")
             continue
         
         # Train model
@@ -195,7 +195,7 @@ def process_data():
     
     # Hyperparameter tuning with time series split
     param_dist = {
-        'num_leaves': [31, 63, 127, 255],
+        'num_leaves': [31, 63, 127, 200],
         'learning_rate': [0.01, 0.05, 0.1],
         'feature_fraction': [0.7, 0.8, 0.9],
         'bagging_fraction': [0.7, 0.8, 0.9],

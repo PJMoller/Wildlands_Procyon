@@ -250,7 +250,7 @@ def predict_next_365_days():
     # Calculate GLOBAL calibration factor
     print("Calculating global calibration factor...")
     last_date = processed_df['date'].max()
-    validation_start = last_date - pd.Timedelta(days=30)
+    validation_start = last_date - pd.Timedelta(days=60)
     val_df = processed_df[processed_df['date'] >= validation_start]
     
     if len(val_df) > 0:
@@ -549,7 +549,8 @@ def predict_next_365_days():
                     except:
                         input_df[col] = 0
             
-            # I. Binary classification prediction
+
+            # I. Binary classification prediction (use only for curiosity, not dampening)
             binary_input = input_df[binary_features].copy()
             for col in binary_features:
                 if binary_input[col].dtype == 'object':
@@ -565,41 +566,31 @@ def predict_next_365_days():
             if pd.isna(seasonal_avg):
                 seasonal_avg = 0
             
-            # Predict
+            # K. PREDICT - TRUST THE MODEL
+            # Skip complex probability dampening - let model predictions through
             predicted_sales_raw = create_family_level_predictions(
                 model, family_models, input_df, ticket_name, ticket_family, family_performance
             )
             
-            # K. FINAL: Optimized probability handling (less conservative)
-            # Favor activation probability heavily - binary model is too conservative
-            combined_prob = (0.8 * activation_prob) + (0.2 * will_sell_prob)
-            
-            # Apply dampening only for very low probabilities
-            if combined_prob < 0.15:
-                # Minimal dampening - let model predictions through
-                predicted_sales = predicted_sales_raw * max(0.5, combined_prob)
-            elif combined_prob < 0.35:
-                # Light scaling
-                predicted_sales = predicted_sales_raw * (0.7 + combined_prob * 0.3)
-            elif combined_prob < 0.65:
-                # Moderate scaling
-                predicted_sales = predicted_sales_raw * (0.85 + combined_prob * 0.15)
+            # Only minimal safety net: ensure predictions are reasonable
+            # If activation probability is very low AND no recent sales history, dampen slightly
+            if activation_prob < 0.10 and ticket_history.sum() == 0:
+                # This ticket has never sold and activation is low - heavy dampening
+                predicted_sales = predicted_sales_raw * 0.1
+            elif activation_prob < 0.15:
+                # Light dampening for low confidence
+                predicted_sales = predicted_sales_raw * 0.5
             else:
-                # Full prediction for high confidence
+                # TRUST THE MODEL for everything else
                 predicted_sales = predicted_sales_raw
             
-            # L. Apply family bias correction (reduced weight to prevent overcorrection)
-            family_bias = bias_correction_factors.get(ticket_family, 1.0)
-            predicted_sales = predicted_sales * (0.5 + family_bias * 0.5)
-            
-            # M. Apply global calibration (THIS IS THE KEY FIX)
+            # L. Apply global calibration (CRITICAL - this fixes the scale)
             predicted_sales = predicted_sales * global_calibration
             
-            # N. Optional: Light seasonal blending for medium+ confidence
-            if combined_prob > 0.25:
-                predicted_sales = (0.9 * predicted_sales) + (0.1 * seasonal_avg)
+            # M. Blend with seasonal baseline (very light - just 5%)
+            predicted_sales = (0.95 * predicted_sales) + (0.05 * seasonal_avg)
             
-            # O. Cap at historical maximum
+            # N. Cap at historical maximum
             historical_max = ticket_max_sales.get(ticket_name, 1000)
             final_prediction = max(0, min(round(predicted_sales), historical_max))
             
@@ -611,10 +602,10 @@ def predict_next_365_days():
                 "predicted_sales": final_prediction,
                 "activation_probability": activation_prob,
                 "binary_probability": will_sell_prob,
-                "combined_probability": combined_prob,
                 "raw_prediction": predicted_sales_raw,
                 "seasonal_baseline": seasonal_avg
             })
+
         
         # Add day predictions to all_predictions list
         if day_predictions:
