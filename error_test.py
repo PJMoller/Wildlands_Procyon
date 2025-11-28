@@ -2,7 +2,7 @@ import pandas as pd
 import os
 import glob
 import numpy as np
-
+import matplotlib.pyplot as plt
 
 # --- Configuration ---
 PREDICTIONS_DIR = "data/predictions/"
@@ -177,6 +177,33 @@ def compare_daily_totals():
     output_path = os.path.join(PREDICTIONS_DIR, 'daily_total_forecast_vs_budget.csv')
     comparison_df.to_csv(output_path, index=False)
     print(f"\nA detailed daily comparison (raw + calibrated) has been saved to:\n{output_path}")
+
+
+
+# 1) Load the comparison file
+df = pd.read_csv(
+    "data/predictions/daily_total_forecast_vs_budget.csv",
+    parse_dates=["date"]
+)
+
+df["ratio_budget_over_forecast"] = (
+    df["total_budget_sales"] / df["total_forecast_sales"]
+)
+# 3) Set date as index for nicer time-series plotting (optional)
+df = df.set_index("date")
+
+# 4) Plot the ratio
+plt.figure(figsize=(12, 5))
+df["ratio_budget_over_forecast"].plot()
+plt.axhline(1.0, color="red", linestyle="--", label="ratio = 1.0")
+plt.title("Daily ratio: budget / raw forecast")
+plt.ylabel("Ratio")
+plt.legend()
+plt.tight_layout()
+
+# 5) Save the plot to file
+plt.savefig("data/predictions/daily_ratio_budget_over_forecast.png", dpi=150)
+plt.close()
 
 
 # --- RUN THE COMPARISON ---

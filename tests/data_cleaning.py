@@ -3,7 +3,9 @@ import pandas as pd
 import pandas.api.types as ptypes
 import numpy as np
 from datetime import timedelta
-from sklearn.utils import resample
+
+
+
 
 
 def classify_ticket_families(ticket_names):
@@ -16,7 +18,6 @@ def classify_ticket_families(ticket_names):
     for ticket in ticket_names:
         name_lower = str(ticket).lower()
         
-        # Define pattern-based rules (customize based on your actual ticket names)
         if any(sub in name_lower for sub in ['subscriber', 'abonnement', 'lidmaatschap']):
             family_mapping[ticket] = 'subscription'
         elif any(sub in name_lower for sub in ['action', 'flex', 'dynamic']):
@@ -33,13 +34,73 @@ def classify_ticket_families(ticket_names):
     return family_mapping
 
 
+
+
+
+def create_synthetic_2023_from_2024(real_2024_df, noise_level=0.12):
+    """
+    Direct copy of 2024 data to 2023 with noise added
+    - Copies entire 2024 dataset
+    - Shifts dates to 2023
+    - Adds noise to weather and sales
+    - Keeps holidays deterministic (just date-shifted)
+    """
+    print(f"Creating synthetic 2023 from 2024: {len(real_2024_df)} rows...")
+    
+    # Create copy of 2024 data
+    synthetic_2023 = real_2024_df.copy()
+    
+    # Shift date to 2023
+    synthetic_2023['date'] = synthetic_2023['date'] - pd.DateOffset(years=1)
+    
+    # Add noise to numeric features (weather and sales)
+    numeric_cols = ['temperature', 'rain_morning', 'rain_afternoon', 
+                   'precip_morning', 'precip_afternoon', 'ticket_num']
+    
+    for col in numeric_cols:
+        if col in synthetic_2023.columns:
+            # Generate noise (Gaussian, mean=0, std=noise_level)
+            noise = np.random.normal(0, noise_level, len(synthetic_2023))
+            
+            # Apply noise differently based on column type
+            if col == 'ticket_num':
+                # For sales: smaller noise, preserve zeros
+                noise = np.random.normal(0, noise_level * 0.5, len(synthetic_2023))
+                non_zero_mask = synthetic_2023[col] > 0
+                synthetic_2023.loc[non_zero_mask, col] = (
+                    synthetic_2023.loc[non_zero_mask, col] * (1 + noise[non_zero_mask])
+                ).round().astype(int)
+                synthetic_2023[col] = np.maximum(0, synthetic_2023[col])
+            else:
+                # For weather: full noise, keep physical bounds
+                synthetic_2023[col] = synthetic_2023[col] * (1 + noise)
+                if 'rain' in col or 'precip' in col:
+                    synthetic_2023[col] = np.maximum(0, synthetic_2023[col])
+    
+    # Holiday columns are already in the data (date-shifted), no noise needed
+    
+    # Shuffle event names slightly (20% variation)
+    if 'event_name' in synthetic_2023.columns:
+        unique_events = synthetic_2023['event_name'].unique()
+        if len(unique_events) > 1:
+            mask = np.random.random(len(synthetic_2023)) < 0.2
+            synthetic_2023.loc[mask, 'event_name'] = np.random.choice(
+                unique_events, size=mask.sum()
+            )
+    
+    print(f"Generated {len(synthetic_2023)} synthetic 2023 rows")
+    return synthetic_2023
+
+
+
+
+
 def create_ticket_lifecycle_features(df, ticket_col='ticket_name', date_col='date', sales_col='ticket_num'):
     """
     Create lifecycle features for each ticket type
     """
     df = df.sort_values([ticket_col, date_col])
     
-    # Calculate days since first sale and days until last sale
     lifecycle = df.groupby(ticket_col).agg({
         date_col: ['min', 'max'],
         sales_col: ['mean', 'std', 'max']
@@ -47,73 +108,12 @@ def create_ticket_lifecycle_features(df, ticket_col='ticket_name', date_col='dat
     
     lifecycle.columns = ['first_sale_date', 'last_sale_date', 'avg_sales', 'sales_std', 'max_sales']
     lifecycle['ticket_lifespan_days'] = (lifecycle['last_sale_date'] - lifecycle['first_sale_date']).dt.days
-    lifecycle['sales_cv'] = lifecycle['sales_std'] / lifecycle['avg_sales']  # Coefficient of variation
+    lifecycle['sales_cv'] = lifecycle['sales_std'] / lifecycle['avg_sales']
     
     return lifecycle
 
 
-def generate_synthetic_data(base_df, target_year=2023, noise_level=0.15, n_variations=2):
-    """
-    SAFE synthetic data generation from 2024 data
-    - Shifts dates to target_year (2023)
-    - Adds Gaussian noise to numeric features
-    - Creates multiple variations per row
-    - Preserves temporal patterns but adds variation
-    """
-    print(f"Generating synthetic {target_year} data from 2024 patterns...")
-    
-    synthetic_rows = []
-    
-    # Group by ticket to preserve per-ticket patterns
-    for ticket_name, group in base_df.groupby('ticket_name'):
-        # Create n variations per row
-        for _ in range(n_variations):
-            synth_group = group.copy()
-            
-            # Shift date to target year
-            date_shift = synth_group['date'] - pd.DateOffset(years=1)  # 2024 -> 2023
-            synth_group['date'] = date_shift
-            
-            # Add noise to numeric features (preserve mean, add variance)
-            numeric_cols = ['temperature', 'rain_morning', 'rain_afternoon', 'precip_morning', 'precip_afternoon']
-            for col in numeric_cols:
-                if col in synth_group.columns:
-                    noise = np.random.normal(0, noise_level, len(synth_group))
-                    synth_group[col] = synth_group[col] * (1 + noise)
-                    # Keep physical bounds
-                    if 'rain' in col or 'precip' in col:
-                        synth_group[col] = np.maximum(0, synth_group[col])
-            
-            # Add noise to ticket_num (sales) - CRITICAL: preserve zeros
-            if 'ticket_num' in synth_group.columns:
-                # Only add noise to non-zero values
-                non_zero_mask = synth_group['ticket_num'] > 0
-                noise = np.random.normal(0, noise_level * 0.5, len(synth_group))  # Less noise for sales
-                synth_group.loc[non_zero_mask, 'ticket_num'] = (
-                    synth_group.loc[non_zero_mask, 'ticket_num'] * (1 + noise[non_zero_mask])
-                ).round().astype(int)
-                # Ensure non-negative
-                synth_group['ticket_num'] = np.maximum(0, synth_group['ticket_num'])
-            
-            # Shuffle event assignments slightly (20% chance of change)
-            if 'event_name' in synth_group.columns:
-                unique_events = synth_group['event_name'].unique()
-                if len(unique_events) > 1:
-                    mask = np.random.random(len(synth_group)) < 0.2  # 20% shuffle
-                    synth_group.loc[mask, 'event_name'] = np.random.choice(
-                        unique_events, 
-                        size=mask.sum()
-                    )
-            
-            synthetic_rows.append(synth_group)
-    
-    synthetic_df = pd.concat(synthetic_rows, ignore_index=True)
-    
-    # Remove exact duplicates that might occur
-    synthetic_df = synthetic_df.drop_duplicates(subset=['date', 'ticket_name', 'ticket_num'])
-    
-    print(f"Generated {len(synthetic_df)} synthetic rows for {target_year}")
-    return synthetic_df
+
 
 
 def process_data():
@@ -144,15 +144,41 @@ def process_data():
         print(f"Error loading recurring events data: {e}"); return
 
 
+
     # --- Visitor Data Processing ---
     visitor_og_df.columns = ["groupID", "ticket_name", "date", "ticket_num"]
     visitor_og_df["date"] = pd.to_datetime(visitor_og_df["date"], format="%Y-%m-%d")
-    visitor_df = visitor_og_df[['date', 'ticket_name', 'ticket_num', "groupID"]]
+    
+    # CRITICAL FIX 1: Filter non-visitor tickets IMMEDIATELY
+    print("Filtering out non-visitor tickets...")
+    non_visitor_keywords = ['consumptiebon', 'niet meetellen', 'consumptiebonnen']
+    visitor_df = visitor_og_df[
+        ~visitor_og_df['ticket_name'].str.lower().str.contains('|'.join(non_visitor_keywords), na=False)
+    ].copy()
+    
+    print(f"Removed non-visitor tickets. Remaining: {len(visitor_df)} rows")
+    
+    # CRITICAL FIX 2: Add ticket type indicators from NAMES (since you don't have discount %)
+    print("Creating ticket type indicators...")
+    ticket_name_lower = visitor_df['ticket_name'].str.lower()
+    
+    # Add indicators using .loc to avoid SettingWithCopyWarning and ensure persistence
+    visitor_df.loc[:, 'is_actie_ticket'] = ticket_name_lower.str.contains('actie|inkoop', na=False).astype(int)
+    visitor_df.loc[:, 'is_abonnement_ticket'] = ticket_name_lower.str.contains('abonnement', na=False).astype(int)
+    visitor_df.loc[:, 'is_full_price'] = ticket_name_lower.str.contains('vol betalend|volbetalend', na=False).astype(int)
+    visitor_df.loc[:, 'is_accommodation_ticket'] = ticket_name_lower.str.contains('accommodatiehouder', na=False).astype(int)
+    
+    # Group tickets (from your answer: ticket names indicate group packages)
+    group_keywords = ['group', 'groep', 'family', 'familie', 'package']
+    visitor_df.loc[:, 'is_group_ticket'] = ticket_name_lower.str.contains('|'.join(group_keywords), na=False).astype(int)
+    
+    # Joint promotions (from your answer)
+    visitor_df.loc[:, 'is_joint_promotion'] = ticket_name_lower.str.contains('joint promotion', na=False).astype(int)
     
     # Create ticket family mapping dynamically
     print("Creating ticket family classifications...")
     ticket_families = classify_ticket_families(visitor_df['ticket_name'].unique())
-    visitor_df['ticket_family'] = visitor_df['ticket_name'].map(ticket_families)
+    visitor_df.loc[:, 'ticket_family'] = visitor_df['ticket_name'].map(ticket_families)
     
     # --- Weather Data Processing ---
     weather_og_df.columns = ["date", "temperature", "rain", "precipitation", "hour"]
@@ -161,6 +187,7 @@ def process_data():
     weather_og_df['rain_afternoon'] = np.where(weather_og_df['hour'] >= 12, weather_og_df['rain'], 0)
     weather_og_df['precip_morning'] = np.where(weather_og_df['hour'] < 12, weather_og_df['precipitation'], 0)
     weather_og_df['precip_afternoon'] = np.where(weather_og_df['hour'] >= 12, weather_og_df['precipitation'], 0)
+    weather_og_df['date'] = pd.to_datetime(weather_og_df['date']).dt.date
     weather_daily = weather_og_df.groupby("grouping_date").agg(
         temperature=('temperature', 'mean'), 
         rain_morning=('rain_morning', 'sum'), 
@@ -171,6 +198,9 @@ def process_data():
     weather_daily.rename(columns={'grouping_date': 'date'}, inplace=True)
     weather_daily["date"] = pd.to_datetime(weather_daily["date"])
     weather_daily = weather_daily.round(1)
+
+
+
 
 
     # --- Holiday & Recurring Events Data Processing ---
@@ -192,9 +222,10 @@ def process_data():
     camp_og_df.columns = ["year", "week", "promo_NLNoord", "promo_NLMidden", "promo_NLZuid", "promo_Nordrhein-Westfalen", "promo_Niedersachsen"]
     camp_og_df.rename(columns={"Week ": "week"}, inplace=True, errors='ignore')
     
-    # Calculate campaign strength scores
+    # CRITICAL FIX 3: Separate campaign vs promotion features
     promo_cols = [col for col in camp_og_df.columns if col.startswith('promo_')]
     camp_og_df['campaign_strength'] = camp_og_df[promo_cols].sum(axis=1)
+    camp_og_df['promotion_active'] = (camp_og_df['campaign_strength'] > 0).astype(int)  # Binary: discount available
     camp_og_df['campaign_regions_active'] = (camp_og_df[promo_cols] > 0).sum(axis=1)
     
     recurring_og_df.columns = ["event_name", "date"]
@@ -207,17 +238,33 @@ def process_data():
     recurring_df = recurring_df.drop_duplicates(subset=['date', 'event_name'])
 
 
+
+
+
+
     # --- Data Expansion ---
     print("Expanding data to include zero-sale days...")
-    all_dates = pd.date_range(start=visitor_df['date'].min(), end=visitor_df['date'].max(), freq='D')
+    # CRITICAL: Create full 2023-2025 date range using last sales date
+    last_sales_date = visitor_df['date'].max()
+    all_dates = pd.date_range(start='2023-01-01', end=last_sales_date, freq='D')
     all_tickets = visitor_df['ticket_name'].unique()
+    
+    print(f"Creating {len(all_dates)} dates × {len(all_tickets)} tickets = {len(all_dates) * len(all_tickets):,} rows")
     
     multi_index = pd.MultiIndex.from_product([all_dates, all_tickets], names=['date', 'ticket_name'])
     expanded_df = pd.DataFrame(index=multi_index).reset_index()
-    expanded_df = pd.merge(expanded_df, visitor_df, on=['date', 'ticket_name'], how='left')
+    
+    # CRITICAL FIX: Define EXACT columns to merge (including indicators)
+    # Do NOT include ticket_family - it's added via mapping
+    merge_cols = ['date', 'ticket_name', 'ticket_num', 'groupID', 
+                  'is_actie_ticket', 'is_abonnement_ticket', 'is_full_price', 
+                  'is_accommodation_ticket', 'is_group_ticket', 'is_joint_promotion']
+    
+    # MERGE with indicator columns preserved
+    expanded_df = pd.merge(expanded_df, visitor_df[merge_cols], on=['date', 'ticket_name'], how='left')
     expanded_df['ticket_num'] = expanded_df['ticket_num'].fillna(0).astype(int)
     
-    # Add family information to expanded df
+    # Add family information AFTER merge (not in merge_cols)
     expanded_df['ticket_family'] = expanded_df['ticket_name'].map(ticket_families)
     
     # Find available episodes (when tickets were actively sold)
@@ -249,40 +296,176 @@ def process_data():
         )
         expanded_df.loc[mask, 'is_available'] = 1
     
-    print("Zero-sale days created.")
+    print(f"Zero-sale days created: {len(expanded_df)} rows")
 
 
-    # --- SAFE SYNTHETIC DATA GENERATION ---
-    print("Creating synthetic 2023 data from 2024 patterns...")
+
+
+
+
+    # --- Extract 2024 weather for synthetic 2023 ---
+    print("Extracting 2024 weather data for synthetic 2023...")
+
+    # Get 2024 weather data
+    weather_2024 = weather_daily[
+        weather_daily['date'].dt.year == 2024
+    ].copy()
+
+    # Shift it to 2023
+    weather_2023 = weather_2024.copy()
+    weather_2023['date'] = weather_2023['date'] - pd.DateOffset(years=1)
+
+    # Add noise to weather (optional but recommended)
+    weather_noise_cols = ['temperature', 'rain_morning', 'rain_afternoon', 
+                         'precip_morning', 'precip_afternoon']
+    for col in weather_noise_cols:
+        noise = np.random.normal(0, 0.12, len(weather_2023))  # 12% noise
+        weather_2023[col] = weather_2023[col] * (1 + noise)
+        if 'rain' in col or 'precip' in col:
+            weather_2023[col] = np.maximum(0, weather_2023[col])
+        weather_2023[col] = weather_2023[col].round(1)
+
+    # Create combined weather dataset (2023 synthetic + 2024-2025 real)
+    weather_combined = pd.concat([
+        weather_2023,
+        weather_daily[weather_daily['date'].dt.year >= 2024]
+    ], ignore_index=True).drop_duplicates(subset=['date'])
+
+    print(f"Weather combined: {len(weather_combined)} days (2023 synthetic + 2024-2025 real)")
+
+
+
+
+
+
+    # --- Extract 2024 events for synthetic 2023 ---
+    print("Extracting 2024 events for synthetic 2023...")
+
+    # Get 2024 events
+    events_2024 = recurring_df[recurring_df['date'].dt.year == 2024].copy()
+    events_2023 = events_2024.copy()
+    events_2023['date'] = events_2023['date'] - pd.DateOffset(years=1)
+
+    # Create combined events dataset (2023 synthetic + 2024-2025 real)
+    events_combined = pd.concat([
+        events_2023,
+        recurring_df[recurring_df['date'].dt.year >= 2024]
+    ], ignore_index=True).drop_duplicates(subset=['date', 'event_name'])
+
+    print(f"Events combined: {len(events_combined)} days (2023 synthetic + 2024-2025 real)")
+
+
+
+
+
+
+    # --- Extract 2024 campaigns for synthetic 2023 ---
+    print("Extracting 2024 campaigns for synthetic 2023...")
     
-    # Filter 2024 data as base
-    base_2024 = expanded_df[expanded_df['date'].dt.year == 2024].copy()
+    # Get 2024 campaigns
+    camp_2024 = camp_og_df[camp_og_df['year'] == 2024].copy()
+    camp_2023 = camp_2024.copy()
+    camp_2023['year'] = 2023  # Shift year to 2023
     
-    if len(base_2024) > 0:
-        # Generate synthetic 2023 data
-        synthetic_2023 = generate_synthetic_data(
-            base_df=base_2024,
-            target_year=2023,
-            noise_level=0.12,  # 12% noise - moderate variation
-            n_variations=2     # 2x variations = 2x data
+    # Recalculate features for 2023
+    promo_cols = [col for col in camp_og_df.columns if col.startswith('promo_')]
+    camp_2023['campaign_strength'] = camp_2023[promo_cols].sum(axis=1)
+    camp_2023['promotion_active'] = (camp_2023['campaign_strength'] > 0).astype(int)
+    camp_2023['campaign_regions_active'] = (camp_2023[promo_cols] > 0).sum(axis=1)
+    
+    # Create combined campaign dataset (2023 synthetic + 2024-2025 real)
+    camp_combined = pd.concat([
+        camp_2023,
+        camp_og_df[camp_og_df['year'] >= 2024]
+    ], ignore_index=True).drop_duplicates(subset=['year', 'week'])
+
+    print(f"Campaigns combined: {len(camp_combined)} rows (2023 synthetic + 2024-2025 real)")
+
+
+
+
+
+
+    # --- Create synthetic 2023 from 2024 ---
+    print("Creating synthetic 2023 from 2024 with noise...")
+
+    # Filter 2024 real data
+    real_2024 = expanded_df[expanded_df['date'].dt.year == 2024].copy()
+
+    if len(real_2024) > 0:
+        # Create synthetic 2023
+        synthetic_2023 = create_synthetic_2023_from_2024(
+            real_2024_df=real_2024,
+            noise_level=0.12
         )
         
-        # Combine real 2024 + synthetic 2023
-        expanded_df = pd.concat([
-            expanded_df,
-            synthetic_2023
+        # Combine all data
+        merged_df = pd.concat([
+            synthetic_2023,
+            real_2024,
+            expanded_df[expanded_df['date'].dt.year == 2025]
         ], ignore_index=True)
         
-        print(f"Combined dataset: {len(expanded_df)} rows (2024 real + 2023 synthetic)")
+        print(f"Combined dataset: {len(merged_df)} rows")
     else:
-        print("⚠️  No 2024 data found for synthetic generation")
+        print("⚠️  No 2024 data found")
+        merged_df = expanded_df
+
+
+
+    # --- Merge with COMBINED weather, holidays, campaigns, events ---
+    print("Merging with all external data (including synthetic 2023)...")
+    merged_df = pd.merge(merged_df, weather_combined, on="date", how="left")
+    merged_df = pd.merge(merged_df, final_holiday_df, on="date", how="left")
+    merged_df = pd.merge(merged_df, events_combined, on="date", how="left")
+    merged_df['event_name'] = merged_df['event_name'].fillna('no_event')
+    
+    # CRITICAL FIX: Add year/week columns BEFORE campaign merge
+    merged_df["year"] = merged_df["date"].dt.year
+    merged_df["week"] = merged_df["date"].dt.isocalendar().week
+    
+    # Merge campaigns on year/week
+    merged_df = pd.merge(merged_df, camp_combined, on=["year", "week"], how="left")
+
+    # CRITICAL FIX: Add weekday, day, and is_weekend immediately after all merges
+    merged_df["weekday"] = merged_df["date"].dt.weekday
+    merged_df["day"] = merged_df["date"].dt.day
+    merged_df['is_weekend'] = (merged_df['weekday'] >= 5).astype(int)
+
+    # CRITICAL FIX: Ensure ticket indicators are filled for ALL rows (including synthetic 2023)
+    # Get unique ticket indicators from visitor_df
+    ticket_indicators = visitor_df[['ticket_name', 'is_actie_ticket', 'is_abonnement_ticket', 
+                                   'is_full_price', 'is_accommodation_ticket', 'is_group_ticket', 
+                                   'is_joint_promotion', 'groupID']].drop_duplicates()
+    
+    # Map indicators to ALL rows in merged_df based on ticket_name
+    for col in ['groupID', 'is_actie_ticket', 'is_abonnement_ticket', 'is_full_price', 
+                'is_accommodation_ticket', 'is_group_ticket', 'is_joint_promotion']:
+        merged_df[col] = merged_df['ticket_name'].map(
+            ticket_indicators.set_index('ticket_name')[col]
+        )
+        # Fill NaN values (for tickets that might not exist in visitor_df)
+        if col == 'groupID':
+            merged_df[col] = merged_df[col].fillna(-1).astype(int)
+        else:
+            merged_df[col] = merged_df[col].fillna(0).astype(int)
+
+    # Fill weather NaNs
+    weather_cols = ['temperature', 'rain_morning', 'rain_afternoon', 
+                   'precip_morning', 'precip_afternoon']
+    for col in weather_cols:
+        if col in merged_df.columns:
+            merged_df[col] = merged_df[col].fillna(0)
+
+    print(f"Merge complete: {len(merged_df)} rows")
+
 
 
     # --- Create ticket lifecycle features ---
     print("Creating ticket lifecycle features...")
-    lifecycle_features = create_ticket_lifecycle_features(expanded_df)
-    expanded_df = pd.merge(
-        expanded_df, 
+    lifecycle_features = create_ticket_lifecycle_features(merged_df)
+    merged_df = pd.merge(
+        merged_df, 
         lifecycle_features[['avg_sales', 'sales_cv', 'ticket_lifespan_days']], 
         left_on='ticket_name', 
         right_index=True, 
@@ -290,26 +473,13 @@ def process_data():
     )
 
 
-    # --- Initial Merging ---
-    daily_features_df = pd.merge(weather_daily, final_holiday_df, on="date", how="inner")
-    merged_df = pd.merge(expanded_df, daily_features_df, on="date", how="left")
-    merged_df = pd.merge(merged_df, recurring_df, on="date", how="left")
-    merged_df['event_name'] = merged_df['event_name'].fillna('no_event')
-    merged_df = merged_df[merged_df['date'].dt.year >= 2023].copy()  # Keep both 2023 (synthetic) and 2024 (real)
-
 
     # --- FEATURE ENGINEERING ---
     print("Creating advanced time-based and interaction features...")
     
-    # Basic Date Features
-    merged_df["year"] = merged_df["date"].dt.year
+    # Basic Date Features (year, week, weekday, day already added above)
     merged_df["month"] = merged_df["date"].dt.month
-    merged_df["week"] = merged_df["date"].dt.isocalendar().week
-    merged_df["day"] = merged_df["date"].dt.day
-    merged_df["weekday"] = merged_df["date"].dt.weekday
     merged_df['day_of_year'] = merged_df['date'].dt.dayofyear
-    merged_df['is_weekend'] = (merged_df['weekday'] >= 5).astype(int)
-    merged_df = pd.merge(merged_df, camp_og_df, on=["year", "week"], how="left")
     
     # Cyclical Features
     merged_df['day_of_year_sin'] = np.sin(2 * np.pi * merged_df['day_of_year'] / 365.25)
@@ -335,13 +505,18 @@ def process_data():
     merged_df['temp_x_weekend'] = merged_df['temperature'] * merged_df['is_weekend']
     merged_df['is_perfect_day'] = ((merged_df['temperature'] > 20) & (merged_df['rain_morning'] == 0) & (merged_df['rain_afternoon'] == 0)).astype(int)
     
+    # CRITICAL FIX: Interaction features for ticket types
+    merged_df['campaign_x_actie'] = merged_df['campaign_strength'] * merged_df['is_actie_ticket']
+    merged_df['promotion_x_actie'] = merged_df['promotion_active'] * merged_df['is_actie_ticket']
+    merged_df['weekend_x_group'] = merged_df['is_weekend'] * merged_df['is_group_ticket']
+    
     # Enhanced Lag and Rolling Features (multi-scale)
     print("Creating multi-scale lag and rolling features...")
     merged_df = merged_df.sort_values(['ticket_name', 'date'])
     group = merged_df.groupby('ticket_name')['ticket_num']
     
     # Multi-scale lags
-    for lag in [1, 2, 3, 7, 14, 21, 28, 30, 60, 90]:
+    for lag in [1, 2, 3, 7, 14, 21, 30]:
         merged_df[f'sales_lag_{lag}'] = group.shift(lag)
     
     # Multiple rolling windows
@@ -369,14 +544,23 @@ def process_data():
     merged_df['sales_momentum_7d'] = merged_df['sales_lag_1'] - merged_df['sales_lag_7']
     merged_df['sales_trend_30d'] = merged_df['sales_lag_1'] - merged_df['sales_lag_30']
     
+    # weather holiday interactions
+    merged_df['temp_x_holiday_intensity'] = merged_df['temperature'] * merged_df['holiday_intensity']
+
+
+
+
+
     # Add Availability Features
     def calculate_days_since_available(group):
         if group.iloc[0] == 1:
-            # If ticket starts as available, calculate cumulative sum
             return group.cumsum()
         else:
-            # If ticket starts as unavailable, return zeros
             return pd.Series(np.zeros(len(group), dtype=int), index=group.index)
+
+
+
+
 
     merged_df['days_since_available'] = merged_df.groupby('ticket_name')['is_available'].apply(
         calculate_days_since_available
@@ -406,9 +590,16 @@ def process_data():
     
     # --- Final Cleanup ---
     print("Final cleanup...")
+
+    print("Data processing completed successfully!")
+    print(f"Final dataset shape: {merged_df.shape}")
+    print(f"Date range: {merged_df['date'].min()} to {merged_df['date'].max()}")
+    print(f"Ticket types: {merged_df['ticket_name'].nunique()}")
+    print(f"Ticket families: {merged_df['ticket_family'].value_counts().to_dict()}")
+
     merged_df.sort_values(['ticket_name', 'date'], inplace=True)
     merged_df.reset_index(drop=True, inplace=True)
-    
+    print(merged_df[merged_df['ticket_family'] == 'fixed_seasonal']['ticket_num'].describe())
     # Save processed data
     print("Saving processed data...")
     merged_df.to_csv("../data/processed/processed_merge.csv", index=False)
@@ -421,11 +612,16 @@ def process_data():
     # Save lifecycle features
     lifecycle_features.to_csv("../data/processed/ticket_lifecycle.csv")
     
-    print("Data processing completed successfully!")
-    print(f"Final dataset shape: {merged_df.shape}")
-    print(f"Date range: {merged_df['date'].min()} to {merged_df['date'].max()}")
-    print(f"Ticket types: {merged_df['ticket_name'].nunique()}")
-    print(f"Ticket families: {merged_df['ticket_family'].value_counts().to_dict()}")
+
+    
+    # DEBUG: Verify years in final data
+    print(f"\nYears in final dataset: {sorted(merged_df['date'].dt.year.unique())}")
+    year_counts = merged_df['date'].dt.year.value_counts().sort_index()
+    for year, count in year_counts.items():
+        print(f"  {year}: {count} rows")
+
+
+
 
 
 if __name__ == "__main__":
