@@ -3,14 +3,10 @@ import pandas as pd
 
 app = Flask(__name__)
 
-# ---- Load CSV once at startup ----
 df = pd.read_csv("Wildlands_Procyon/data/predictions/app_predictions_365days.csv", low_memory=False)
-
 df['date'] = pd.to_datetime(df['date'], errors='coerce')
 df = df.dropna(subset=['date'])
-
-print("CSV MIN DATE:", df['date'].min())
-print("CSV MAX DATE:", df['date'].max())
+df['date'] = df['date'].dt.normalize()
 
 
 @app.route("/")
@@ -18,9 +14,11 @@ def home():
     return render_template("Dashboard.html")
 
 
-# ----------------------------------------------------------
-#  API: Expected attendance ranges (week, month, year)
-# ----------------------------------------------------------
+@app.route("/slider")
+def slider():
+    return render_template("Slider.html")
+
+
 @app.route("/api/visitors")
 def get_visitors():
     range_type = request.args.get("range", "week")
@@ -29,37 +27,29 @@ def get_visitors():
     try:
         selected_date = pd.to_datetime(date_str).normalize()
     except Exception:
-        selected_date = df['date'].max().normalize()
+        selected_date = df['date'].max()
 
-    data_df = df.copy()
-    data_df['date'] = data_df['date'].dt.normalize()
+    data = df.copy()
 
-    # WEEK
     if range_type == "week":
         start = selected_date - pd.Timedelta(days=selected_date.weekday())
         end = start + pd.Timedelta(days=6)
 
-    # MONTH
     elif range_type == "month":
         start = selected_date.replace(day=1)
         end = (start + pd.offsets.MonthEnd(1)).normalize()
 
-    # YEAR
     elif range_type == "year":
         start = selected_date.replace(month=1, day=1)
         end = selected_date.replace(month=12, day=31)
 
-    # DAY (used by pie chart)
     elif range_type == "day":
-        start = selected_date
-        end = selected_date
-
-    # fallback
+        start = end = selected_date
     else:
-        start = data_df['date'].max() - pd.Timedelta(days=6)
-        end = data_df['date'].max()
+        start = data['date'].max() - pd.Timedelta(days=6)
+        end = data['date'].max()
 
-    data = data_df[(data_df['date'] >= start) & (data_df['date'] <= end)]
+    data = data[(data['date'] >= start) & (data['date'] <= end)]
     data = data.sort_values('date')
 
     return jsonify({
@@ -68,19 +58,16 @@ def get_visitors():
     })
 
 
-# ----------------------------------------------------------
-#  API: Today & Tomorrow widgets
-# ----------------------------------------------------------
 @app.route("/api/today")
 def today_info():
     today = pd.Timestamp.today().normalize()
     tomorrow = today + pd.Timedelta(days=1)
 
-    data_today = df[df['date'] == today]
-    data_tomorrow = df[df['date'] == tomorrow]
+    today_row = df[df['date'] == today]
+    tomorrow_row = df[df['date'] == tomorrow]
 
-    today_visitors = int(data_today['total_visitors'].values[0]) if not data_today.empty else 0
-    tomorrow_visitors = int(data_tomorrow['total_visitors'].values[0]) if not data_tomorrow.empty else 0
+    today_visitors = int(today_row['total_visitors'].values[0]) if not today_row.empty else 0
+    tomorrow_visitors = int(tomorrow_row['total_visitors'].values[0]) if not tomorrow_row.empty else 0
 
     return jsonify({
         "today": {
@@ -94,9 +81,6 @@ def today_info():
     })
 
 
-# ----------------------------------------------------------
-#  API: Ticket breakdown for selected day (pie chart)
-# ----------------------------------------------------------
 @app.route("/api/day-tickets")
 def day_tickets():
     date_str = request.args.get("date")
@@ -108,18 +92,14 @@ def day_tickets():
     except:
         return jsonify({"error": "Invalid date format"}), 400
 
-    # Filter row for that day
     row = df[df["date"] == selected_date]
     if row.empty:
         return jsonify({"error": "No data for this date"}), 404
 
     row = row.iloc[0]
 
-    # Ticket columns = all columns containing "ticket_"
-    ticket_columns = [col for col in df.columns if col.startswith("ticket_")]
-
-    ticket_values = {col.replace("ticket_", ""): int(row[col]) if not pd.isna(row[col]) else 0
-                     for col in ticket_columns}
+    ticket_columns = [c for c in df.columns if c.startswith("ticket_")]
+    ticket_values = {c.replace("ticket_", ""): int(row[c]) if not pd.isna(row[c]) else 0 for c in ticket_columns}
 
     total_visitors = int(row["total_visitors"]) if not pd.isna(row["total_visitors"]) else 0
 
@@ -130,8 +110,5 @@ def day_tickets():
     })
 
 
-# ----------------------------------------------------------
-#  Run the app
-# ----------------------------------------------------------
 if __name__ == "__main__":
     app.run(debug=True)

@@ -7,93 +7,85 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 </head>
+
 <body>
-    <div class="container">
+<div class="container">
 
-        <!-- Current day -->
-        <div class="widget current-day">
-            <h3>Current day</h3>
-            <div class="content-box">
-                <p>Wednesday, Oct 1</p>
-                <p>No event</p>
-                <p class="visitor-count">0 Visitors</p>
-            </div>
+    <div class="widget current-day">
+        <h3>Current day</h3>
+        <div class="content-box">
+            <p>Wednesday, Oct 1</p>
+            <p>No event</p>
+            <p class="visitor-count">0 Visitors</p>
         </div>
-
-        <!-- Tomorrow -->
-        <div class="widget tomorrow">
-            <h3>Tomorrow</h3>
-            <div class="content-box">
-                <p>Thursday, Oct 2</p>
-                <p>No event</p>
-                <p class="visitor-count">0 Visitors</p>
-            </div>
-        </div>
-
-        <!-- Events -->
-        <div class="widget events">
-            <h3>Events (Impact)</h3>
-            <div class="event good">
-                <span class="event-status">GOOD!</span>
-                <div class="event-content">
-                    <p class="event-title">WILDnights, Dec 20 - Jan 4</p>
-                    <p class="event-description">Entertainment, your audience is using weekly social media.</p>
-                </div>
-            </div>
-            <div class="event bad">
-                <span class="event-status">BAD!</span>
-                <div class="event-content">
-                    <p class="event-title">Exclusive Evening, Jul 28</p>
-                    <p class="event-description">Entertainment, your latest evening turn button recently launched.</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Attendance chart -->
-        <div class="widget attendance-chart">
-            <h3>Expected Attendance</h3>
-            <div class="content-box">
-
-                <div class="chart-controls">
-                    <label for="start-date">Select date:</label>
-                    <input type="date" id="start-date">
-                </div>
-
-                <div class="chart-options">
-                    <button data-range="week" class="active">Week</button>
-                    <button data-range="month">Month</button>
-                    <button data-range="year">Year</button>
-                </div>
-
-                <div id="attendanceChart" style="width:100%; height:250px;"></div>
-            </div>
-        </div>
-
-        <!-- Forecast + Pie Chart -->
-        <div class="widget forecast">
-            <h3>Information on selected day</h3>
-
-            <div class="content-box forecast-box">
-                <p class="visitor-count">0 visitors</p>
-
-                <div id="pieChart" style="
-                    width:100%;
-                    height:220px;
-                    max-height:220px;
-                "></div>
-            </div>
-        </div>
-
-        <!-- Manual link -->
-        <div class="widget manual-link">
-            <h3>Manual Controls</h3>
-            <div class="content-box link-box">
-                <a href="Slider.html" class="manual-button">Slider Page</a>
-            </div>
-        </div>
-
     </div>
 
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <div class="widget tomorrow">
+        <h3>Tomorrow</h3>
+        <div class="content-box">
+            <p>Thursday, Oct 2</p>
+            <p>No event</p>
+            <p class="visitor-count">0 Visitors</p>
+        </div>
+    </div>
+
+    <div class="widget events">
+        <h3>Events (Impact)</h3>
+
+        <div class="event good">
+            <span class="event-status">GOOD!</span>
+            <div class="event-content">
+                <p class="event-title">WILDnights, Dec 20 - Jan 4</p>
+                <p class="event-description">Entertainment</p>
+            </div>
+        </div>
+
+        <div class="event bad">
+            <span class="event-status">BAD!</span>
+            <div class="event-content">
+                <p class="event-title">Exclusive Evening, Jul 28</p>
+                <p class="event-description">Entertainment</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="widget attendance-chart">
+        <h3>Expected Attendance</h3>
+
+        <div class="content-box">
+            <div class="chart-controls">
+                <label>Select date:</label>
+                <input type="date" id="start-date">
+            </div>
+
+            <div class="chart-options">
+                <button data-range="week" class="active">Week</button>
+                <button data-range="month">Month</button>
+                <button data-range="year">Year</button>
+            </div>
+
+            <div id="attendanceChart" style="width:100%; height:250px;"></div>
+        </div>
+    </div>
+
+    <div class="widget forecast">
+        <h3>Information on selected day</h3>
+
+        <div class="content-box forecast-box">
+            <p class="visitor-count">0 visitors</p>
+            <div id="pieChart" style="width:100%; height:220px;"></div>
+        </div>
+    </div>
+
+    <div class="widget manual-link">
+        <h3>Manual Controls</h3>
+        <div class="content-box link-box">
+            <a href="{{ url_for('slider') }}" class="manual-button">Slider Page</a>
+        </div>
+    </div>
+
+</div>
+
+<script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>
