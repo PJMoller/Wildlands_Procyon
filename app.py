@@ -8,11 +8,12 @@ df['date'] = pd.to_datetime(df['date'], errors='coerce')
 df = df.dropna(subset=['date'])
 df['date'] = df['date'].dt.normalize()
 
+# 🆕 NEW: Storage for saved slider variables
+saved_slider_values = {}
 
 @app.route("/")
 def home():
     return render_template("Dashboard.html")
-
 
 @app.route("/slider")
 def slider():
@@ -108,6 +109,23 @@ def day_tickets():
         "tickets": ticket_values,
         "total_visitors": total_visitors
     })
+
+@app.route("/save_variables", methods=["POST"])
+def save_variables():
+    global saved_slider_values
+
+    try:
+        saved_slider_values = request.json
+
+        print("\n--- Slider Variables Received ---")
+        for key, value in saved_slider_values.items():
+            print(f"{key.capitalize():<10}: {value}")
+        print("---------------------------------\n")
+
+        return jsonify({"status": "success", "saved": saved_slider_values})
+
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 400
 
 
 if __name__ == "__main__":

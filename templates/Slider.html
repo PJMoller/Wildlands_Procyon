@@ -44,6 +44,18 @@
                 <input type="number" id="holidays-num" value="0" class="variable-value">
             </div>
 
+            <div class="variable">
+                <label for="weekday">Weekday</label>
+                <input type="range" id="weekday" min="0" max="6" step="1" value="3">
+                <input type="number" id="weekday-num" value="3" step="1" class="variable-value">
+            </div>
+
+            <div class="variable">
+                <label for="month">Month</label>
+                <input type="range" id="month" min="1" max="12" step="1" value="6">
+                <input type="number" id="month-num" value="6" step="1" class="variable-value">
+            </div>
+
         </div>
     </div>
 
@@ -72,7 +84,7 @@
 </div>
 
 <script>
-const sliders = ['rain', 'weather', 'event', 'promo', 'holidays'];
+const sliders = ['rain', 'weather', 'event', 'promo', 'holidays', 'weekday', 'month'];
 
 sliders.forEach(id => {
     const range = document.getElementById(id);
@@ -102,6 +114,29 @@ new Chart(ctx, {
             y: { ticks: { color: '#a0a0a0' }, grid: { color: '#3a3a3a' }}
         }
     }
+});
+</script>
+
+<script>
+document.querySelector(".confirm-button").addEventListener("click", () => {
+
+    const payload = {
+        rain: parseFloat(document.getElementById("rain").value),
+        weather: parseFloat(document.getElementById("weather").value),
+        event: parseFloat(document.getElementById("event").value),
+        promo: parseFloat(document.getElementById("promo").value),
+        holidays: parseFloat(document.getElementById("holidays").value),
+        weekday: parseInt(document.getElementById("weekday").value),
+        month: parseInt(document.getElementById("month").value)
+    };
+
+    fetch("/save_variables", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+    })
+    .then(response => response.json())
+    .then(data => console.log("Server:", data));
 });
 </script>
 
