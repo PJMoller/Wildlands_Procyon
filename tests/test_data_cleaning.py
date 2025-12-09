@@ -9,7 +9,7 @@ import io
 tests_folder = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "tests"))
 sys.path.insert(0, tests_folder)
 
-from data_cleaning import process_data
+from src.data_cleaning import process_data
 
 class TestDataProcessing(unittest.TestCase):
     @patch("pandas.read_csv")
