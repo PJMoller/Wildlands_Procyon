@@ -1,4 +1,5 @@
 # pip install openpyxl!!!
+from paths import RAW_DIR, PROCESSED_DIR
 import pandas as pd
 import pandas.api.types as ptypes
 import numpy as np
@@ -31,66 +32,6 @@ def classify_ticket_families(ticket_names):
 
 
 
-
-
-def create_synthetic_2023_from_2024(real_2024_df, noise_level=0.12):
-    """
-    Direct copy of 2024 data to 2023 with noise added
-    - Copies entire 2024 dataset
-    - Shifts dates to 2023
-    - Adds noise to weather and sales
-    - Keeps holidays deterministic (just date-shifted)
-    """
-    print(f"Creating synthetic 2023 from 2024: {len(real_2024_df)} rows...")
-    
-    # Create copy of 2024 data
-    synthetic_2023 = real_2024_df.copy()
-    
-    # Shift date to 2023
-    synthetic_2023['date'] = synthetic_2023['date'] - pd.DateOffset(years=1)
-    
-    # Add noise to numeric features (weather and sales)
-    numeric_cols = ['temperature', 'rain_morning', 'rain_afternoon', 
-                   'precip_morning', 'precip_afternoon', 'ticket_num']
-    
-    for col in numeric_cols:
-        if col in synthetic_2023.columns:
-            # Generate noise (Gaussian, mean=0, std=noise_level)
-            noise = np.random.normal(0, noise_level, len(synthetic_2023))
-            
-            # Apply noise differently based on column type
-            if col == 'ticket_num':
-                # For sales: smaller noise, preserve zeros
-                noise = np.random.normal(0, noise_level * 0.5, len(synthetic_2023))
-                non_zero_mask = synthetic_2023[col] > 0
-                synthetic_2023.loc[non_zero_mask, col] = (
-                    synthetic_2023.loc[non_zero_mask, col] * (1 + noise[non_zero_mask])
-                ).round().astype(int)
-                synthetic_2023[col] = np.maximum(0, synthetic_2023[col])
-            else:
-                # For weather: full noise, keep physical bounds
-                synthetic_2023[col] = synthetic_2023[col] * (1 + noise)
-                if 'rain' in col or 'precip' in col:
-                    synthetic_2023[col] = np.maximum(0, synthetic_2023[col])
-    
-    # Holiday columns are already in the data (date-shifted), no noise needed
-    
-    # Shuffle event names slightly (20% variation)
-    if 'event_name' in synthetic_2023.columns:
-        unique_events = synthetic_2023['event_name'].unique()
-        if len(unique_events) > 1:
-            mask = np.random.random(len(synthetic_2023)) < 0.2
-            synthetic_2023.loc[mask, 'event_name'] = np.random.choice(
-                unique_events, size=mask.sum()
-            )
-    
-    print(f"Generated {len(synthetic_2023)} synthetic 2023 rows")
-    return synthetic_2023
-
-
-
-
-
 def create_ticket_lifecycle_features(df, ticket_col='ticket_name', date_col='date', sales_col='ticket_num'):
     """
     Create lifecycle features for each ticket type
@@ -109,33 +50,30 @@ def create_ticket_lifecycle_features(df, ticket_col='ticket_name', date_col='dat
     return lifecycle
 
 
-
-
-
 def process_data():
     # --- Data Loading ---
     try:
-        visitor_og_df = pd.read_csv("../data/raw/visitordaily.csv", sep=";")
+        visitor_og_df = pd.read_csv(RAW_DIR / "visitordaily.csv", sep=";")
     except Exception as e:
         print(f"Error loading visitor data: {e}"); return
     
     try:
-        weather_og_df = pd.read_excel("../data/raw/weather.xlsx")
+        weather_og_df = pd.read_excel(RAW_DIR / "weather.xlsx")
     except Exception as e:
         print(f"Error loading weather data: {e}"); return
     
     try:
-        holiday_og_df = pd.read_excel("../data/raw/Holidays 2023-2026 Netherlands and Germany.xlsx")
+        holiday_og_df = pd.read_excel(RAW_DIR / "Holidays 2023-2026 Netherlands and Germany.xlsx")
     except Exception as e:
         print(f"Error loading holiday data: {e}"); return
     
     try:
-        camp_og_df = pd.read_excel("../data/raw/campaings.xlsx")
+        camp_og_df = pd.read_excel(RAW_DIR / "campaings.xlsx")
     except Exception as e:
         print(f"Error loading campaign data: {e}"); return
     
     try:
-        recurring_og_df = pd.read_excel("../data/raw/recurring_events_drenthe.xlsx")
+        recurring_og_df = pd.read_excel(RAW_DIR / "recurring_events_drenthe.xlsx")
     except Exception as e:
         print(f"Error loading recurring events data: {e}"); return
 
@@ -376,36 +314,6 @@ def process_data():
     ], ignore_index=True).drop_duplicates(subset=['year', 'week'])
 
     print(f"Campaigns combined: {len(camp_combined)} rows (2023 synthetic + 2024-2025 real)")
-
-
-
-
-
-
-    # --- Create synthetic 2023 from 2024 ---
-    print("Creating synthetic 2023 from 2024 with noise...")
-
-    # Filter 2024 real data
-    real_2024 = expanded_df[expanded_df['date'].dt.year == 2024].copy()
-
-    if len(real_2024) > 0:
-        # Create synthetic 2023
-        synthetic_2023 = create_synthetic_2023_from_2024(
-            real_2024_df=real_2024,
-            noise_level=0.12
-        )
-        
-        # Combine all data
-        merged_df = pd.concat([
-            synthetic_2023,
-            real_2024,
-            expanded_df[expanded_df['date'].dt.year == 2025]
-        ], ignore_index=True)
-        
-        print(f"Combined dataset: {len(merged_df)} rows")
-    else:
-        print("⚠️  No 2024 data found")
-        merged_df = expanded_df
 
 
 
