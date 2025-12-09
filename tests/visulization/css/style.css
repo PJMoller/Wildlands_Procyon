@@ -28,7 +28,6 @@ body {
 .container {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    grid-template-rows: auto auto auto;
     gap: 20px;
     max-width: 1200px;
     margin: 0 auto;
@@ -41,7 +40,6 @@ body {
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
 }
 
-/* Layout grid areas */
 .current-day { grid-column: 1 / 2; }
 .tomorrow { grid-column: 2 / 3; }
 .events { grid-column: 3 / 5; }
@@ -56,7 +54,6 @@ h3 {
     color: var(--text-secondary);
 }
 
-/* Content boxes */
 .content-box {
     background-color: var(--bg-content);
     border-radius: var(--border-radius);
@@ -70,14 +67,12 @@ h3 {
     margin-top: 10px;
 }
 
-/* Event styling */
 .event {
     background-color: var(--bg-event);
     border-radius: var(--border-radius);
     padding: 15px;
     margin-bottom: 10px;
     display: flex;
-    align-items: flex-start;
     gap: 12px;
 }
 
@@ -89,24 +84,20 @@ h3 {
     padding: 4px 8px;
     border-radius: 4px;
     font-size: 0.8rem;
-    white-space: nowrap;
     color: white;
 }
 
 .good .event-status { background-color: var(--accent-green); }
 .bad .event-status { background-color: var(--accent-red); }
 
-/* Chart Styling */
 .chart-controls {
     display: flex;
-    align-items: center;
     justify-content: space-between;
     margin-bottom: 10px;
 }
 
 .chart-options {
     display: flex;
-    margin-bottom: 10px;
     background-color: var(--bg-widget);
     border-radius: 6px;
     padding: 4px;
@@ -121,7 +112,7 @@ h3 {
     cursor: pointer;
     border-radius: 4px;
     flex: 1;
-    transition: all 0.3s;
+    transition: 0.3s;
 }
 
 .chart-options button.active {
@@ -129,15 +120,12 @@ h3 {
     color: white;
 }
 
-/* ✅ Chart container fix */
 .chart-area {
     width: 100%;
     height: 400px;
     background-color: var(--bg-widget);
     border-radius: var(--border-radius);
     padding: 10px;
-    overflow: hidden;
-    position: relative;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -146,17 +134,8 @@ h3 {
 .chart-area > div {
     width: 100% !important;
     height: 100% !important;
-    position: relative !important;
-    max-width: 100%;
-    max-height: 100%;
 }
 
-.chart-placeholder {
-    color: var(--text-secondary);
-    text-align: center;
-}
-
-/* Calendar Styling */
 .calendar-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
@@ -170,7 +149,7 @@ h3 {
     padding: 10px 5px;
     text-align: center;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: 0.2s;
     font-size: 0.9rem;
 }
 
@@ -180,8 +159,11 @@ h3 {
     transform: translateY(-2px);
 }
 
-/* Buttons */
-.confirm-button {
+/* Unified Buttons */
+button,
+input[type="submit"],
+input[type="button"],
+input[type="reset"] {
     background-color: var(--accent-blue);
     color: white;
     border: none;
@@ -190,35 +172,34 @@ h3 {
     cursor: pointer;
     font-weight: bold;
     width: 100%;
-    margin-top: 15px;
-    transition: all 0.3s;
+    transition: 0.3s;
 }
 
-.confirm-button:hover {
+button:hover,
+input[type="submit"]:hover {
     background-color: #1976D2;
     transform: translateY(-2px);
 }
 
-/* Manual link */
-.manual-button {
-    background-color: var(--accent-blue);
-    color: white;
-    text-decoration: none;
-    padding: 15px 30px;
+input[type="text"],
+input[type="number"],
+input[type="email"],
+input[type="password"],
+textarea,
+select {
+    background-color: var(--bg-content);
+    color: var(--text-light);
+    border: 1px solid var(--bg-event);
     border-radius: var(--border-radius);
-    font-weight: bold;
-    display: inline-block;
+    padding: 10px;
     width: 100%;
+}
+
+.manual-button {
+    display: inline-block;
     text-align: center;
-    transition: all 0.3s;
 }
 
-.manual-button:hover {
-    background-color: #1976D2;
-    transform: translateY(-2px);
-}
-
-/* Responsive */
 @media (max-width: 768px) {
     .container {
         grid-template-columns: 1fr;

@@ -1,14 +1,25 @@
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, redirect, url_for
 import pandas as pd
+import os
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 
-df = pd.read_csv("Wildlands_Procyon/data/predictions/app_predictions_365days.csv", low_memory=False)
+# Upload settings
+UPLOAD_FOLDER = "data/raw/"
+ALLOWED_EXTENSIONS = {"csv", "xlsx", "xls"}
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
+
+def allowed_file(filename):
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
+# Load predictions data
+df = pd.read_csv("data/predictions/app_predictions_365days.csv", low_memory=False)
 df['date'] = pd.to_datetime(df['date'], errors='coerce')
 df = df.dropna(subset=['date'])
 df['date'] = df['date'].dt.normalize()
 
-# 🆕 NEW: Storage for saved slider variables
 saved_slider_values = {}
 
 @app.route("/")
@@ -18,7 +29,6 @@ def home():
 @app.route("/slider")
 def slider():
     return render_template("Slider.html")
-
 
 @app.route("/api/visitors")
 def get_visitors():
@@ -58,7 +68,6 @@ def get_visitors():
         "visitors": data['total_visitors'].fillna(0).tolist()
     })
 
-
 @app.route("/api/today")
 def today_info():
     today = pd.Timestamp.today().normalize()
@@ -80,7 +89,6 @@ def today_info():
             "visitors": tomorrow_visitors
         }
     })
-
 
 @app.route("/api/day-tickets")
 def day_tickets():
@@ -113,20 +121,32 @@ def day_tickets():
 @app.route("/save_variables", methods=["POST"])
 def save_variables():
     global saved_slider_values
-
     try:
         saved_slider_values = request.json
-
         print("\n--- Slider Variables Received ---")
         for key, value in saved_slider_values.items():
             print(f"{key.capitalize():<10}: {value}")
         print("---------------------------------\n")
-
         return jsonify({"status": "success", "saved": saved_slider_values})
-
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 400
 
+@app.route("/upload", methods=["POST"])
+def upload_file():
+    if "file" not in request.files:
+        return "No file part", 400
+
+    file = request.files["file"]
+    if file.filename == "":
+        return "No selected file", 400
+
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        save_path = os.path.join(UPLOAD_FOLDER, filename)
+        file.save(save_path)
+        return redirect(url_for("home"))
+
+    return "Invalid file type. Only CSV, XLS, XLSX allowed.", 400
 
 if __name__ == "__main__":
     app.run(debug=True)
