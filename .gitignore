@@ -17,3 +17,4 @@ tests/visulization/charts/*
 tests/model_testing/catboost_info/*
 unit_tests/__pycache__/*
 tests/__pycache__/*
+webapp/database.db
