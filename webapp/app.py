@@ -1,9 +1,43 @@
-from flask import Flask, render_template, jsonify, request, redirect, url_for
+from flask import Flask, render_template, jsonify, request, redirect, url_for, session
 import pandas as pd
 import os
 from werkzeug.utils import secure_filename
+import sqlite3
+import hashlib
 
 app = Flask(__name__)
+
+#Data Base User Authentication ;-;
+
+app.secret_key = os.environ.get("SECRET_KEY", "fallback_dev_key")
+
+def check_user(username, password):
+    conn = sqlite3.connect("database.db")
+    cur = conn.cursor()
+
+    hashed = hashlib.sha256(password.encode()).hexdigest()
+
+    cur.execute("SELECT * FROM users WHERE username = ? AND password = ?", (username, hashed))
+    user = cur.fetchone()
+
+    conn.close()
+    return user
+# Login Page (GET)
+@app.route("/login", methods=["GET"])
+def login_page():
+    return render_template("Loginpage.html")
+
+# Login Submit (POST)
+@app.route("/login", methods=["POST"])
+def login_submit():
+    username = request.form.get("username")
+    password = request.form.get("password")
+
+    if check_user(username, password):
+        session["user"] = username
+        return redirect(url_for("home"))
+    else:
+        return render_template("Loginpage.html", error="Incorrect username or password.")
 
 # Upload settings
 UPLOAD_FOLDER = "data/raw/"
@@ -20,15 +54,21 @@ df['date'] = pd.to_datetime(df['date'], errors='coerce')
 df = df.dropna(subset=['date'])
 df['date'] = df['date'].dt.normalize()
 
+
 saved_slider_values = {}
 
 @app.route("/")
 def home():
+    if "user" not in session:
+        return redirect(url_for("login_page"))
     return render_template("Dashboard.html")
 
 @app.route("/slider")
 def slider():
+    if "user" not in session:
+        return redirect(url_for("login_page"))
     return render_template("Slider.html")
+
 
 @app.route("/api/visitors")
 def get_visitors():
