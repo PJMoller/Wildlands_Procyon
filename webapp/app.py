@@ -48,8 +48,12 @@ if not os.path.exists(UPLOAD_FOLDER):
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
+# Where the path of the CSV is
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# Build path to the CSV file
+CSV_PATH = os.path.join(BASE_DIR, "data", "predictions", "app_predictions_365days.csv")
 # Load predictions data
-df = pd.read_csv("data/predictions/app_predictions_365days.csv", low_memory=False)
+df = pd.read_csv(CSV_PATH, low_memory=False)
 df['date'] = pd.to_datetime(df['date'], errors='coerce')
 df = df.dropna(subset=['date'])
 df['date'] = df['date'].dt.normalize()
@@ -189,4 +193,4 @@ def upload_file():
     return "Invalid file type. Only CSV, XLS, XLSX allowed.", 400
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=5000)

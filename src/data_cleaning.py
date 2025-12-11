@@ -3,6 +3,8 @@ import pandas as pd
 import pandas.api.types as ptypes
 import numpy as np
 from datetime import timedelta
+from paths import RAW_DIR, PROCESSED_DIR
+PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
 
 def classify_ticket_families(ticket_names):
     """
@@ -115,27 +117,27 @@ def create_ticket_lifecycle_features(df, ticket_col='ticket_name', date_col='dat
 def process_data():
     # --- Data Loading ---
     try:
-        visitor_og_df = pd.read_csv("../data/raw/visitordaily.csv", sep=";")
+        visitor_og_df = pd.read_csv(RAW_DIR / "visitors.csv", sep=";")
     except Exception as e:
         print(f"Error loading visitor data: {e}"); return
     
     try:
-        weather_og_df = pd.read_excel("../data/raw/weather.xlsx")
+        weather_og_df = pd.read_excel(RAW_DIR / "weather.xlsx")
     except Exception as e:
         print(f"Error loading weather data: {e}"); return
     
     try:
-        holiday_og_df = pd.read_excel("../data/raw/Holidays 2023-2026 Netherlands and Germany.xlsx")
+        holiday_og_df = pd.read_excel(RAW_DIR / "Holidays 2022-2026 Netherlands and Germany.xlsx")
     except Exception as e:
         print(f"Error loading holiday data: {e}"); return
     
     try:
-        camp_og_df = pd.read_excel("../data/raw/campaings.xlsx")
+        camp_og_df = pd.read_excel(RAW_DIR / "campaings 2022-2026.xlsx")
     except Exception as e:
         print(f"Error loading campaign data: {e}"); return
     
     try:
-        recurring_og_df = pd.read_excel("../data/raw/recurring_events_drenthe.xlsx")
+        recurring_og_df = pd.read_excel(RAW_DIR / "recurring_events_drenthe.xlsx")
     except Exception as e:
         print(f"Error loading recurring events data: {e}"); return
 
@@ -598,15 +600,15 @@ def process_data():
     print(merged_df[merged_df['ticket_family'] == 'fixed_seasonal']['ticket_num'].describe())
     # Save processed data
     print("Saving processed data...")
-    merged_df.to_csv("../data/processed/processed_merge.csv", index=False)
+    merged_df.to_csv(PROCESSED_DIR / "processed_merge.csv", index=False)
     
     # Save ticket family mapping for later use
     pd.DataFrame(list(ticket_families.items()), columns=['ticket_name', 'ticket_family']).to_csv(
-        "../data/processed/ticket_families.csv", index=False
+    PROCESSED_DIR / "ticket_families.csv", index=False
     )
     
     # Save lifecycle features
-    lifecycle_features.to_csv("../data/processed/ticket_lifecycle.csv")
+    lifecycle_features.to_csv(PROCESSED_DIR / "ticket_lifecycle.csv")
     
 
     
