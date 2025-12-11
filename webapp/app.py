@@ -48,11 +48,10 @@ if not os.path.exists(UPLOAD_FOLDER):
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# Where the path of the CSV is
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-# Build path to the CSV file
-CSV_PATH = os.path.join(BASE_DIR, "data", "predictions", "app_predictions_365days.csv")
-# Load predictions data
+# Parent directory of webapp (project root)
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # points to /app
+CSV_PATH = os.path.join(PROJECT_ROOT, "data", "predictions", "app_predictions_365days.csv")
+
 df = pd.read_csv(CSV_PATH, low_memory=False)
 df['date'] = pd.to_datetime(df['date'], errors='coerce')
 df = df.dropna(subset=['date'])

@@ -7,7 +7,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy your entire application folder for the container
-COPY webapp/ .
+COPY webapp/ webapp/
 
 # Copy the data folder
 COPY data/ data/
@@ -16,4 +16,4 @@ COPY data/ data/
 EXPOSE 5000
 
 # This starts the flask server
-CMD [ "python", "app.py" ]
+CMD [ "python", "webapp/app.py" ]
