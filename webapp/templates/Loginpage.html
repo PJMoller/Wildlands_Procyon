@@ -13,13 +13,13 @@
 <div >
     <h2>WildLands Portal</h2>
     <div class="login-box">
-        <form>
+        <form action="/login" method="POST">
             <div class="input-group">
-                <input type="text" placeholder="Username or Email" class="input-field">
+                <input name="username" type="text" placeholder="Username or Email" class="input-field">
             </div>
 
             <div class="input-group">
-                <input type="password" placeholder="Password" class="input-field">
+                <input name="password" type="password" placeholder="Password" class="input-field">
             </div>
 
             <button type="submit" class="login-btn">Log In</button>
