@@ -1,10 +1,12 @@
 services:
   web:
     build:
-      context: app
-      target: builder
-    # flask requires SIGINT to stop gracefully
-    # (default stop signal from Compose is SIGTERM)
-    stop_signal: SIGINT
+      context: .
+      dockerfile: Dockerfile
+    container_name: procyon_web
+    # SIGTERM works with python app.py
+    # SIGINT if you want to use flask run
+    stop_signal: SIGTERM
     ports:
       - '5000:5000'
+    restart: unless-stopped
