@@ -23,19 +23,6 @@ def wape_score(y_true, y_pred):
     return -wape
 wape_scorer = make_scorer(wape_score, greater_is_better=True)
 
-def time_series_cross_val_predict(estimator, X, y, cv):
-    """
-    Perform time series cross-validation manually and return OOF predictions.
-    """
-    oof_preds = np.zeros(len(y))
-    for train_idx, val_idx in cv.split(X):
-        X_train, X_val = X.iloc[train_idx], X.iloc[val_idx]
-        y_train = y.iloc[train_idx]
-        
-        est = clone(estimator)
-        est.fit(X_train, y_train)
-        oof_preds[val_idx] = est.predict(X_val)
-    return oof_preds
 
 def calculate_metrics(y_true, y_pred):
     """Calculate comprehensive metrics"""
@@ -65,14 +52,14 @@ def calculate_metrics(y_true, y_pred):
     }
     
 def create_family_level_models(processed_df, feature_cols):
-    """Simplified family-level training with proper validation split"""
+    """Family-level training with CV on train + held-out 30-day validation"""
     family_models = {}
     family_performance = {}
     
     ticket_families = processed_df['ticket_family'].unique()
     print(f"\nTraining family-level models for {len(ticket_families)} families...")
     
-    # Use a simple time-based split: last 30 days as validation
+    # Fixed 30-day holdout (true unseen data)
     last_date = processed_df['date'].max()
     validation_start = last_date - pd.Timedelta(days=30)
     
@@ -80,12 +67,13 @@ def create_family_level_models(processed_df, feature_cols):
         print(f"\nTraining model for family: {family}")
         
         family_data = processed_df[processed_df['ticket_family'] == family].copy()
+        family_data = family_data.sort_values('date')
         
         if len(family_data) < 100:
             print(f"Skipping {family} - insufficient data ({len(family_data)} rows)")
             continue
         
-        # Split train/val by time
+        # Split: train (<30 days) + val (last 30 days)
         train_mask = family_data['date'] < validation_start
         val_mask = family_data['date'] >= validation_start
         
@@ -98,7 +86,23 @@ def create_family_level_models(processed_df, feature_cols):
             print(f"Skipping {family} - not enough validation data")
             continue
         
-        # Train model
+        # CV ONLY on training data
+        X_train_cv = X_train_fam
+        y_train_cv = y_train_fam
+
+        n_train_samples = len(X_train_cv)
+        n_splits_calc = max(2, n_train_samples // 100)
+        n_splits = min(5, n_splits_calc)
+
+        print(f"  {family}: {n_train_samples} rows → {n_splits_calc}→{n_splits} folds")
+        print(f"  y_train_cv unique values: {len(y_train_cv.unique())}")
+        print(f"  y_train_cv zeros ratio: {(y_train_cv == 0).mean():.1%}")
+        # SAFETY CHECK:
+        if n_train_samples < 20 * n_splits:
+            print(f"  SKIP {family}: too few rows ({n_train_samples} < {20*n_splits} min)")
+            continue
+        #tscv = TimeSeriesSplit(n_splits = min(5, max(2, len(X_train_cv) // 100)))
+        
         model = lgb.LGBMRegressor(
             n_estimators=500,
             learning_rate=0.05,
@@ -106,16 +110,39 @@ def create_family_level_models(processed_df, feature_cols):
             verbose=-1,
         )
         
+        # 1. CV metrics on train data only
+        #tscv_train_preds = cross_val_predict(model, X_train_cv, y_train_cv, cv=tscv, method="predict")
+        def manual_tscv_predict(model, X, y, n_splits=5):
+            preds = np.zeros(len(X))
+            tscv = TimeSeriesSplit(n_splits=n_splits)
+            
+            for train_idx, val_idx in tscv.split(X):
+                X_tr, X_val = X.iloc[train_idx], X.iloc[val_idx]
+                y_tr, y_val = y.iloc[train_idx], y.iloc[val_idx]
+                model.fit(X_tr, y_tr)
+                preds[val_idx] = model.predict(X_val)
+            return preds
+
+        print(f"  Running manual TS CV...")
+        tscv_train_preds = manual_tscv_predict(model, X_train_cv, y_train_cv, n_splits)
+        cv_metrics_train = calculate_metrics(y_train_cv, tscv_train_preds)
+        
+        # 2. Train on train data
         model.fit(X_train_fam, y_train_fam)
         
-        # Predict and evaluate
-        y_pred_fam = model.predict(X_val_fam)
-        metrics = calculate_metrics(y_val_fam, y_pred_fam)
+        # 3. Held-out validation (true unseen)
+        y_val_pred = model.predict(X_val_fam)
+        val_metrics = calculate_metrics(y_val_fam, y_val_pred)
         
         family_models[family] = model
-        family_performance[family] = metrics
+        family_performance[family] = {
+            'cv_train': cv_metrics_train,
+            'heldout_val': val_metrics,
+            'n_train': len(X_train_fam),
+            'n_val': len(X_val_fam)
+        }
         
-        print(f"Family {family} Val Performance: MAE={metrics['MAE']:.2f}, WAPE={metrics['WAPE']:.2f}%")
+        print(f"Family {family} | CV Train WAPE: {cv_metrics_train['WAPE']:.1f}% | Heldout Val WAPE: {val_metrics['WAPE']:.1f}%")
     
     return family_models, family_performance
 
@@ -151,6 +178,9 @@ def process_data():
     processed_df['date'] = pd.to_datetime(processed_df['date'], errors='coerce')
     processed_df = processed_df.dropna(subset=['date'])
     
+    correlations = processed_df[feature_cols + ['ticket_num']].corr()['ticket_num'].abs().sort_values(ascending=False)
+    print(correlations.head(10))
+
     # Use last 30 days for validation
     last_date = processed_df['date'].max()
     validation_start = pd.to_datetime(last_date) - pd.Timedelta(days=30)
@@ -194,16 +224,26 @@ def process_data():
     )
     
     # Hyperparameter tuning with time series split
-    param_dist = {
-        'num_leaves': [31, 63, 127, 200],
-        'learning_rate': [0.01, 0.05, 0.1],
-        'feature_fraction': [0.7, 0.8, 0.9],
-        'bagging_fraction': [0.7, 0.8, 0.9],
-        'min_child_samples': [20, 50, 100, 200],
-        'reg_alpha': [0, 0.1, 0.5, 1.0],
-        'reg_lambda': [0, 0.1, 0.5, 1.0]
-    }
+#    param_dist = {
+#        'num_leaves': [31, 63, 127, 200],
+#        'learning_rate': [0.01, 0.05, 0.1],
+#        'feature_fraction': [0.7, 0.8, 0.9],
+#        'bagging_fraction': [0.7, 0.8, 0.9],
+#        'min_child_samples': [20, 50, 100, 200],
+#        'reg_alpha': [0, 0.1, 0.5, 1.0],
+#        'reg_lambda': [0, 0.1, 0.5, 1.0]
+#    }
     
+    param_dist = {
+        'num_leaves': [31],
+        'learning_rate': [0.01],
+        'feature_fraction': [0.8],
+        'bagging_fraction': [0.7],
+        'min_child_samples': [20],
+        'reg_alpha': [0.1],
+        'reg_lambda': [0]
+    }
+
     tscv = TimeSeriesSplit(n_splits=5)
     random_search = RandomizedSearchCV(
         model, param_distributions=param_dist,
@@ -270,8 +310,9 @@ def process_data():
     
     # Save performance metrics
     performance_summary = {
-        'global_model': val_metrics,
-        'family_models': family_performance
+    'global_model': val_metrics,
+    'family_models_heldout': {k: v['heldout_val'] for k, v in family_performance.items()},
+    'family_models_cv': {k: v['cv_train'] for k, v in family_performance.items()}
     }
     
     with open("../../data/processed/model_performance.pkl", "wb") as f:
@@ -283,12 +324,15 @@ def process_data():
     
     # Print family-level performance summary
     if family_performance:
-        print("\nFamily-Level Model Performance Summary:")
-        family_perf_df = pd.DataFrame(family_performance).T
-        print(family_perf_df.to_string())
+        print("\nFamily-Level Model Performance Summary (HELD-OUT VAL):")
+        family_heldout_df = pd.DataFrame(
+            {k: v['heldout_val'] for k, v in family_performance.items()}
+        ).T
+        print(family_heldout_df.round(2).to_string())
         
-        # Save family performance
-        family_perf_df.to_csv("../../data/processed/family_model_performance.csv")
+        # Save BOTH metrics
+        family_heldout_df.to_csv("../../data/processed/family_heldout_performance.csv")
+        pd.DataFrame(family_performance).to_pickle("../../data/processed/family_full_performance.pkl")
 
 if __name__ == "__main__":
     process_data()
