@@ -15,10 +15,12 @@ DATA_DIR = PROJECT_ROOT / "data"
 RAW_DIR = DATA_DIR / "raw"
 PROCESSED_DIR = DATA_DIR / "processed"
 PREDICTIONS_DIR = DATA_DIR / "predictions"
-
-
 MODELS_DIR = DATA_DIR / "models"
 SRC_DIR = PROJECT_ROOT / "src"
+
+FAMILY_MODELS_PATH = PROCESSED_DIR / "family_models.pkl"
+
+
 
 FAMILY_MODELS_PATH = "data/processed/family_models.pkl"
 FEATURE_COLS_PATH = "data/processed/feature_cols.pkl"
