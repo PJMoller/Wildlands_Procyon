@@ -17,6 +17,21 @@ PROCESSED_DIR = DATA_DIR / "processed"
 PREDICTIONS_DIR = DATA_DIR / "predictions"
 MODELS_DIR = DATA_DIR / "models"
 SRC_DIR = PROJECT_ROOT / "src"
+
+FAMILY_MODELS_PATH = PROCESSED_DIR / "family_models.pkl"
+
+
+FAMILY_MODELS_PATH = PROCESSED_DIR / "family_models.pkl"
+FEATURE_COLS_PATH = PROCESSED_DIR / "feature_cols.pkl"
+PROCESSED_DATA_PATH = PROCESSED_DIR / "processed_merge.csv"
+HOLIDAY_DATA_PATH = RAW_DIR / "Holidays 2023-2026 Netherlands and Germany.xlsx"
+CAMPAIGN_DATA_PATH = RAW_DIR / "campaings.xlsx"
+RECURRING_EVENTS_PATH = RAW_DIR / "recurring_events_drenthe.xlsx"
+SEASONALITY_PROFILE_PATH = PROCESSED_DIR / "ticket_seasonality.csv"
+TICKET_FAMILIES_PATH = PROCESSED_DIR / "ticket_families.csv"
+
+
+
 NEW_ATTEMPT_DIR = SRC_DIR / "new_attempt"
 
 print(f" PROJECT_ROOT: {PROJECT_ROOT}")  # Debug line
