@@ -14,6 +14,7 @@ import numpy as np
 import os
 from sklearn.base import clone
 from sklearn.metrics import make_scorer
+from paths import MODELS_DIR, PROCESSED_DIR, PREDICTIONS_DIR
 
 def wape_score(y_true, y_pred):
     if np.sum(y_true) == 0:
@@ -122,7 +123,7 @@ def create_family_level_models(processed_df, feature_cols):
 def process_data():
     # loading the processed data
     try:
-        processed_df = pd.read_csv("../../data/processed/processed_merge.csv")
+        processed_df = pd.read_csv(PROCESSED_DIR / "processed_merge.csv")
         
         # Convert holiday columns to proper format
         holiday_cols = [c for c in processed_df.columns if c.startswith("holiday_")]
