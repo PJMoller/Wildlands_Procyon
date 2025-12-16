@@ -293,20 +293,20 @@ def process_data():
     plt.ylabel('Feature')
     plt.gca().invert_yaxis()
     plt.tight_layout()
-    plt.savefig("../../data/processed/feature_importances.png", dpi=300)
+    plt.savefig(PROCESSED_DIR / "feature_importances.png", dpi=300)
     plt.close()
     
     # Save the global model
-    os.makedirs("../../data/processed", exist_ok=True)
-    with open("../../data/processed/lgbm_model.pkl", "wb") as f:
+    os.makedirs(PROCESSED_DIR, exist_ok=True)
+    with open(PROCESSED_DIR / "lgbm_model.pkl", "wb") as f:
         pickle.dump(best_model, f)
     
     # Save family models
-    with open("../../data/processed/family_models.pkl", "wb") as f:
+    with open(PROCESSED_DIR / "family_models.pkl", "wb") as f:
         pickle.dump(family_models, f)
     
     # Save feature columns
-    with open("../../data/processed/feature_cols.pkl", "wb") as f:
+    with open(PROCESSED_DIR  / "feature_cols.pkl", "wb") as f:
         pickle.dump(feature_cols, f)
     
     # Save performance metrics
@@ -316,7 +316,7 @@ def process_data():
     'family_models_cv': {k: v['cv_train'] for k, v in family_performance.items()}
     }
     
-    with open("../../data/processed/model_performance.pkl", "wb") as f:
+    with open(PROCESSED_DIR / "model_performance.pkl", "wb") as f:
         pickle.dump(performance_summary, f)
     
     print("\nModel training completed successfully!")
@@ -332,8 +332,8 @@ def process_data():
         print(family_heldout_df.round(2).to_string())
         
         # Save BOTH metrics
-        family_heldout_df.to_csv("../../data/processed/family_heldout_performance.csv")
-        pd.DataFrame(family_performance).to_pickle("../../data/processed/family_full_performance.pkl")
+        family_heldout_df.to_csv(PROCESSED_DIR / "family_heldout_performance.csv")
+        pd.DataFrame(family_performance).to_pickle(PROCESSED_DIR / "family_full_performance.pkl")
 
 if __name__ == "__main__":
     process_data()
