@@ -560,35 +560,43 @@ h2 {
 
 /*button file upload*/
 .upload-form {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-    width: 100%;
-}
-
-.file-input {
     width: 100%;
 }
 
 .upload-btn {
-    display: block !important;
     width: 100% !important;
-    box-sizing: border-box !important;
+    display: block !important;
+
+    appearance: none;
+    -webkit-appearance: none;
+
     background-color: var(--accent-blue);
     color: white;
     border: none;
+
     padding: 15px 30px;
     border-radius: var(--border-radius);
     font-weight: bold;
-    text-align: center;
-    cursor: pointer;
-    transition: 0.3s;
     font-size: 1rem;
-}
 
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.3s;
+}
 
 .upload-btn:hover {
     background-color: #1976D2;
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+}
+.upload-widget {
+    grid-column: 1 / 3;
+    grid-row: 3 / 4;
+}
+
+.upload-form {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
 }
