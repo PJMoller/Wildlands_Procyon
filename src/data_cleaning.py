@@ -7,26 +7,6 @@ from paths import RAW_DIR, PROCESSED_DIR
 PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def create_ticket_lifecycle_features(df, ticket_col='ticket_name', date_col='date', sales_col='ticket_num'):
-    """
-    Create lifecycle features for each ticket type
-    """
-    df = df.sort_values([ticket_col, date_col])
-    
-    lifecycle = df.groupby(ticket_col).agg({
-        date_col: ['min', 'max'],
-        sales_col: ['mean', 'std', 'max']
-    }).round(3)
-    
-    lifecycle.columns = ['first_sale_date', 'last_sale_date', 'avg_sales', 'sales_std', 'max_sales']
-    lifecycle['ticket_lifespan_days'] = (lifecycle['last_sale_date'] - lifecycle['first_sale_date']).dt.days
-    lifecycle['sales_cv'] = lifecycle['sales_std'] / lifecycle['avg_sales']
-    
-    return lifecycle
-
-
-
-
 
 def process_data():
     # --- Data Loading ---
@@ -87,6 +67,7 @@ def process_data():
     # Joint promotions (from your answer)
     visitor_df.loc[:, 'is_joint_promotion'] = ticket_name_lower.str.contains('joint promotion', na=False).astype(int)
     
+
     # Create ticket family mapping dynamically
     print("Creating ticket family classifications...")
     ###################################
@@ -126,11 +107,13 @@ def process_data():
     long_df["holiday"] = long_df["holiday"].replace('', 'None')
     
     # Create enhanced holiday features
-    encoded = pd.get_dummies(long_df.set_index('date')['holiday'], prefix='holiday').groupby('date').max()
-    final_holiday_df = encoded.reset_index()
-    
+    long_df['region_holiday'] = long_df['region'] + '_' + long_df['holiday']
+
+    # One-hot encode ONLY the combined column
+    encoded = pd.get_dummies(long_df.set_index('date')['region_holiday'], prefix='', prefix_sep='_')
+    final_holiday_df = encoded.groupby('date').sum().reset_index()
     # Add holiday intensity (count of simultaneous holidays)
-    holiday_intensity = long_df.groupby('date').size().reset_index(name='holiday_intensity')
+    holiday_intensity = long_df.groupby('date')['holiday'].apply(lambda x: x.dropna().nunique()).reset_index(name='holiday_intensity')
     final_holiday_df = pd.merge(final_holiday_df, holiday_intensity, on='date', how='left')
     
     camp_og_df.columns = ["year", "week", "promo_NLNoord", "promo_NLMidden", "promo_NLZuid", "promo_Nordrhein-Westfalen", "promo_Niedersachsen"]
@@ -159,10 +142,7 @@ def process_data():
 
     # Keep original event_name for reference
     events_combined = events_pivot.copy()
-#    events_combined['event_name'] = recurring_df.groupby('date')['event_name'].first().fillna('no_event')
-#    events_combined.reset_index(inplace=True)
     camp_combined = camp_og_df[['year', 'week', 'campaign_strength', 'promotion_active', 'campaign_regions_active']].copy()
-
 
 
     # --- Data Expansion ---
@@ -178,7 +158,6 @@ def process_data():
     multi_index = pd.MultiIndex.from_product([all_dates, all_tickets], names=['date', 'ticket_name'])
     expanded_df = pd.DataFrame(index=multi_index).reset_index()
     
-    # CRITICAL FIX: Define EXACT columns to merge (including indicators)
     # Do NOT include ticket_family - it's added via mapping
     merge_cols = ['date', 'ticket_name', 'ticket_num', 'groupID', 
                   'is_actie_ticket', 'is_abonnement_ticket', 'is_full_price', 
@@ -233,7 +212,6 @@ def process_data():
     merged_df = pd.merge(merged_df, weather_combined, on="date", how="left")
     merged_df = pd.merge(merged_df, final_holiday_df, on="date", how="left")
     merged_df = pd.merge(merged_df, events_combined, on="date", how="left")
-#    merged_df['event_name'] = merged_df['event_name'].fillna('no_event')
     
     # CRITICAL FIX: Add year/week columns BEFORE campaign merge
     merged_df["year"] = merged_df["date"].dt.year
@@ -247,7 +225,6 @@ def process_data():
     merged_df["day"] = merged_df["date"].dt.day
     merged_df['is_weekend'] = (merged_df['weekday'] >= 5).astype(int)
 
-    # CRITICAL FIX: Ensure ticket indicators are filled for ALL rows (including synthetic 2023)
     # Get unique ticket indicators from visitor_df
     ticket_indicators = visitor_df[['ticket_name', 'is_actie_ticket', 'is_abonnement_ticket', 
                                    'is_full_price', 'is_accommodation_ticket', 'is_group_ticket', 
@@ -274,18 +251,6 @@ def process_data():
 
     print(f"Merge complete: {len(merged_df)} rows")
 
-
-
-    # --- Create ticket lifecycle features ---
-    print("Creating ticket lifecycle features...")
-    lifecycle_features = create_ticket_lifecycle_features(merged_df)
-    merged_df = pd.merge(
-        merged_df, 
-        lifecycle_features[['avg_sales', 'sales_cv', 'ticket_lifespan_days']], 
-        left_on='ticket_name', 
-        right_index=True, 
-        how='left'
-    )
 
 
 
@@ -390,6 +355,11 @@ def process_data():
     # Drop rows with critical missing values
     merged_df.dropna(subset=['ticket_num', 'date', 'ticket_name'], inplace=True)
     
+    print("Removing Wildlands requested ticket types/families")
+    merged_df = merged_df[~merged_df['ticket_name'].str.contains('Inkoop overig|Inkoop E-Tickets', na=False)]
+    merged_df = merged_df[~merged_df['ticket_family'].isin(['group_package', 'b2b'])]
+    merged_df.drop(columns=[col for col in merged_df.columns if 'group_package' in col or 'b2b' in col], inplace=True)
+
     # --- One-Hot Encoding for Categorical Variables ---
     print("One-hot encoding categorical variables...")
     
@@ -401,6 +371,9 @@ def process_data():
     family_dummies = pd.get_dummies(merged_df['ticket_family'], prefix='family')
     merged_df = pd.concat([merged_df, family_dummies], axis=1)
     
+
+
+
     # --- Final Cleanup ---
     print("Final cleanup...")
 
@@ -415,11 +388,6 @@ def process_data():
     # Save processed data
     print("Saving processed data...")
     merged_df.to_csv(PROCESSED_DIR / "processed_merge.csv", index=False)
-    
-
-    
-    # Save lifecycle features
-    lifecycle_features.to_csv(PROCESSED_DIR / "ticket_lifecycle.csv")
     
 
 
