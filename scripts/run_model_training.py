@@ -25,3 +25,6 @@ def main() -> None:
     print("Starting zoo model training pipeline...")
     process_data()
     print("Model training completed!")
+
+if __name__ == "__main__":
+    main()

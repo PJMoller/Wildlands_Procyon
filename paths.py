@@ -21,15 +21,14 @@ SRC_DIR = PROJECT_ROOT / "src"
 FAMILY_MODELS_PATH = PROCESSED_DIR / "family_models.pkl"
 
 
-
-FAMILY_MODELS_PATH = "data/processed/family_models.pkl"
-FEATURE_COLS_PATH = "data/processed/feature_cols.pkl"
-PROCESSED_DATA_PATH = "data/processed/processed_merge.csv"
-HOLIDAY_DATA_PATH = "data/raw/Holidays 2023-2026 Netherlands and Germany.xlsx"
-CAMPAIGN_DATA_PATH = "data/raw/campaings.xlsx"
-RECURRING_EVENTS_PATH = "data/raw/recurring_events_drenthe.xlsx"
-SEASONALITY_PROFILE_PATH = "data/processed/ticket_seasonality.csv"
-TICKET_FAMILIES_PATH = "data/processed/ticket_families.csv"
+FAMILY_MODELS_PATH = PROCESSED_DIR / "family_models.pkl"
+FEATURE_COLS_PATH = PROCESSED_DIR / "feature_cols.pkl"
+PROCESSED_DATA_PATH = PROCESSED_DIR / "processed_merge.csv"
+HOLIDAY_DATA_PATH = RAW_DIR / "Holidays 2023-2026 Netherlands and Germany.xlsx"
+CAMPAIGN_DATA_PATH = RAW_DIR / "campaings.xlsx"
+RECURRING_EVENTS_PATH = RAW_DIR / "recurring_events_drenthe.xlsx"
+SEASONALITY_PROFILE_PATH = PROCESSED_DIR / "ticket_seasonality.csv"
+TICKET_FAMILIES_PATH = PROCESSED_DIR / "ticket_families.csv"
 
 
 
