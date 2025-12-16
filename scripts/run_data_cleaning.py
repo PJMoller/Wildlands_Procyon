@@ -26,6 +26,8 @@ if str(PROJECT_ROOT) not in sys.path:
 from paths import RAW_DIR, PROCESSED_DIR 
 from src.data_cleaning import process_data 
 
+# -> None is a type hint for tools like IDEs and static type checkers. 
+# It helps clarify that our code does not return a value.
 def main() -> None:
     """Run the full data cleaning pipeline."""
     print("Starting zoo data cleaning pipeline...")
