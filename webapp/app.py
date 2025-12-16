@@ -11,8 +11,15 @@ app = Flask(__name__)
 
 app.secret_key = os.environ.get("SECRET_KEY", "fallback_dev_key")
 
+# Get directory of this app.py
+APP_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Correct location of database.db
+DB_PATH = os.path.join(APP_DIR, "database.db")
+
+
 def check_user(username, password):
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
 
     hashed = hashlib.sha256(password.encode()).hexdigest()

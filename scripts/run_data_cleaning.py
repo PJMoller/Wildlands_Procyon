@@ -1,6 +1,6 @@
 # python -m scripts.run_data_cleaning.py
 """
-NECESSARY FILES TO RUN THIS CODE AND MUST ALSO BE NAMES LIKE THIS:
+NECESSARY FILES TO RUN THIS CODE AND MUST ALSO BE NAMED LIKE THIS:
 must all be located in data/raw
 
 - campaings 2022-2026.xlsx
@@ -18,7 +18,7 @@ import sys
 from pathlib import Path
 
 # Add project root to sys.path for absolute imports
-PROJECT_ROOT = Path(__file__).resolve().parents[1]  # zoo_project/
+PROJECT_ROOT = Path(__file__).resolve().parents[1]  # WILDLANDSPROCYON/
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
