@@ -3,10 +3,12 @@ data/*
 !data/processed/
 !data/database/
 !data/predictions/
+!data/models/
 data/raw/*
 data/processed/*
 data/database/*
 data/predictions/*
+data/models/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 !data/database/.gitkeep
