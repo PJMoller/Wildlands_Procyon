@@ -10,14 +10,12 @@
 
 <body>
 
-
-
 <div class="container">
 
     <div class="widget current-day">
         <h3>Current day</h3>
         <div class="content-box">
-            <p>Wednesday, Oct 1</p>
+            <p></p>
             <p>No event</p>
             <p class="visitor-count">0 Visitors</p>
         </div>
@@ -26,7 +24,7 @@
     <div class="widget tomorrow">
         <h3>Tomorrow</h3>
         <div class="content-box">
-            <p>Thursday, Oct 2</p>
+            <p></p>
             <p>No event</p>
             <p class="visitor-count">0 Visitors</p>
         </div>
@@ -79,14 +77,17 @@
             <div id="pieChart" style="width:100%; height:220px;"></div>
         </div>
     </div>
+
     <div class="widget">
         <form action="{{ url_for('upload_file') }}" method="POST" enctype="multipart/form-data" class="upload-form">
             <input type="file" name="file" accept=".csv, .xlsx, .xls" required class="file-input">
             <input type="submit" value="Upload" class="upload-btn">
         </form>
+
+        <div id="upload-status" class="upload-status">
+            Checking for uploaded files...
+        </div>
     </div>
-
-
 
     <div class="widget manual-link">
         <h3>Manual Controls</h3>
@@ -94,6 +95,7 @@
             <a href="{{ url_for('slider') }}" class="manual-button">Slider Page</a>
         </div>
     </div>
+
 </div>
 
 <script src="{{ url_for('static', filename='script.js') }}"></script>
