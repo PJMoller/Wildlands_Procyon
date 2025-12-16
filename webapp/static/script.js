@@ -3,15 +3,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const chartButtons = document.querySelectorAll('.chart-options button');
     const startDateInput = document.getElementById('start-date');
 
-    // Default = today
     startDateInput.value = new Date().toISOString().split('T')[0];
 
-    // Load initial charts
     loadChart('week', startDateInput.value);
     loadTodayWidgets();
     loadDaySummary(startDateInput.value);
+    loadUploadStatus();
 
-    // Range buttons
     chartButtons.forEach(btn => {
         btn.addEventListener('click', () => {
             chartButtons.forEach(b => b.classList.remove('active'));
@@ -20,7 +18,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // When date changes → update attendance + pie chart
     startDateInput.addEventListener('change', () => {
         const activeBtn = document.querySelector('.chart-options button.active');
         loadChart(activeBtn.dataset.range, startDateInput.value);
@@ -28,10 +25,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-
-// ---------------------------------------------------------
-//  Expected Attendance CHART
-// ---------------------------------------------------------
 async function loadChart(range = 'week', date) {
     try {
         const res = await fetch(`/api/visitors?range=${range}&date=${date}`);
@@ -69,57 +62,33 @@ async function loadChart(range = 'week', date) {
         Plotly.newPlot(chartEl, [trace], layout, { responsive: true, displayModeBar: false });
 
     } catch (error) {
-        console.error('Error loading chart:', error);
+        console.error(error);
     }
 }
 
-
-// ---------------------------------------------------------
-//  Today + Tomorrow widgets
-// ---------------------------------------------------------
 async function loadTodayWidgets() {
     const res = await fetch("/api/today");
     const data = await res.json();
 
     document.querySelector(".current-day .content-box p:first-child").textContent = data.today.date;
     document.querySelector(".current-day .visitor-count").textContent =
-        (data.today.visitors?.toLocaleString() || "No data") + " Visitors";
+        (data.today.visitors?.toLocaleString() || "0") + " Visitors";
 
     document.querySelector(".tomorrow .content-box p:first-child").textContent = data.tomorrow.date;
     document.querySelector(".tomorrow .visitor-count").textContent =
-        (data.tomorrow.visitors?.toLocaleString() || "No data") + " Visitors";
+        (data.tomorrow.visitors?.toLocaleString() || "0") + " Visitors";
 }
 
-
-// ---------------------------------------------------------
-//  PIE CHART for Selected Day (Top 5 + Overig)
-// ---------------------------------------------------------
 async function loadDaySummary(date) {
     try {
-        const res = await fetch("/api/visitors?range=day&date=" + date);
-        const data = await res.json();
-
-        // Validate
-        if (!data || !data.visitors || data.visitors.length === 0) {
-            console.warn("No data for selected day");
-            return;
-        }
-
-        // The backend returns only total_visitors for "day" range.
-        // We need a separate endpoint or extra data embedded.
-        // Assuming your backend now returns ticket breakdown too:
-
         const summaryRes = await fetch("/api/day-tickets?date=" + date);
         const summary = await summaryRes.json();
 
         if (!summary || !summary.tickets) return;
 
         let entries = Object.entries(summary.tickets);
-
-        // Sort by value descending
         entries.sort((a, b) => b[1] - a[1]);
 
-        // Top 5 + rest combined
         const top5 = entries.slice(0, 5);
         const rest = entries.slice(5);
         const restTotal = rest.reduce((sum, x) => sum + x[1], 0);
@@ -129,11 +98,9 @@ async function loadDaySummary(date) {
         const labels = top5.map(x => x[0]);
         const values = top5.map(x => x[1]);
 
-        // Forecast text
         document.querySelector(".forecast .visitor-count").textContent =
             summary.total_visitors.toLocaleString() + " visitors";
 
-        // PIE chart
         const trace = {
             labels: labels,
             values: values,
@@ -156,6 +123,23 @@ async function loadDaySummary(date) {
         Plotly.newPlot("pieChart", [trace], layout, { displayModeBar: false });
 
     } catch (error) {
-        console.error("Error loading summary / pie chart:", error);
+        console.error(error);
+    }
+}
+
+async function loadUploadStatus() {
+    const statusEl = document.getElementById("upload-status");
+    if (!statusEl) return;
+
+    const res = await fetch("/api/upload-status");
+    const data = await res.json();
+
+    if (!data.files.length) {
+        statusEl.innerHTML = "<p>No uploaded files found</p>";
+    } else {
+        statusEl.innerHTML = `
+            <p><strong>Uploaded files:</strong></p>
+            <ul>${data.files.map(f => `<li>${f}</li>`).join("")}</ul>
+        `;
     }
 }
