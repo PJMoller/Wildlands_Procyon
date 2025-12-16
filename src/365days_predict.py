@@ -8,23 +8,9 @@ import requests_cache
 from retry_requests import retry
 import numpy as np
 import os
+from paths import PREDICTIONS_DIR, PROCESSED_DIR, PROCESSED_DATA_PATH, MODELS_DIR, FAMILY_MODELS_PATH, FEATURE_COLS_PATH, HOLIDAY_DATA_PATH, CAMPAIGN_DATA_PATH, RECURRING_EVENTS_PATH, TICKET_FAMILIES_PATH
 import warnings
 warnings.filterwarnings('ignore')
-
-
-
-# --- Configuration ---
-MODEL_PATH = "data/processed/lgbm_model.pkl"
-FAMILY_MODELS_PATH = "data/processed/family_models.pkl"
-FEATURE_COLS_PATH = "data/processed/feature_cols.pkl"
-PROCESSED_DATA_PATH = "data/processed/processed_merge.csv"
-HOLIDAY_DATA_PATH = "data/raw/Holidays 2023-2026 Netherlands and Germany.xlsx"
-CAMPAIGN_DATA_PATH = "data/raw/campaings.xlsx"
-RECURRING_EVENTS_PATH = "data/raw/recurring_events_drenthe.xlsx"
-SEASONALITY_PROFILE_PATH = "data/processed/ticket_seasonality.csv"
-TICKET_FAMILIES_PATH = "data/processed/ticket_families.csv"
-PREDICTIONS_DIR = "data/predictions/"
-os.makedirs(PREDICTIONS_DIR, exist_ok=True)
 
 
 
@@ -69,79 +55,6 @@ def get_openmeteo_for_future(days=16):
 
 
 
-def calculate_ticket_activation_probability(ticket_name, current_date, current_month, seasonality_df, 
-                                           ticket_history, ticket_families, processed_df):
-    """
-    Calculate activation probability for a ticket type based on multiple signals
-    Returns probability score between 0 and 1
-    """
-    probability_score = 0.0
-    
-    # 1. Seasonality Score (40% weight)
-    seasonality_df['active_months_list'] = seasonality_df['active_months'].astype(str).str.split(',')
-    is_seasonal = seasonality_df[
-        seasonality_df['active_months_list'].apply(lambda x: str(current_month) in x)
-    ]['ticket_name'].tolist()
-    
-    if ticket_name in is_seasonal:
-        seasonality_score = 0.8
-    else:
-        historical_month_sales = processed_df[
-            (processed_df['ticket_name'] == ticket_name) & 
-            (processed_df['date'].dt.month == current_month) &
-            (processed_df['ticket_num'] > 0)
-        ]
-        seasonality_score = min(1.0, len(historical_month_sales) / 30.0) * 0.6
-    
-    probability_score += seasonality_score * 0.4
-    
-    # 2. Recency Score (30% weight)
-    last_sale_date = ticket_history.index.max() if not ticket_history.empty else None
-    if last_sale_date:
-        days_since_last_sale = (current_date - last_sale_date).days
-        if days_since_last_sale <= 7:
-            recency_score = 1.0
-        elif days_since_last_sale <= 30:
-            recency_score = 0.7
-        elif days_since_last_sale <= 60:
-            recency_score = 0.4
-        else:
-            recency_score = 0.1
-    else:
-        recency_score = 0.0
-    
-    probability_score += recency_score * 0.3
-    
-    # 3. Weekday Pattern Score (20% weight)
-    current_weekday = current_date.weekday()
-    weekday_sales = processed_df[
-        (processed_df['ticket_name'] == ticket_name) & 
-        (processed_df['date'].dt.weekday == current_weekday) &
-        (processed_df['ticket_num'] > 0)
-    ]
-    
-    if len(weekday_sales) > 0:
-        weekday_score = min(1.0, len(weekday_sales) / 10.0)
-    else:
-        weekday_score = 0.2
-    
-    probability_score += weekday_score * 0.2
-    
-    # 4. Ticket Family Baseline Score (10% weight)
-    family = ticket_families.get(ticket_name, 'general')
-    family_avg_sales = processed_df[
-        (processed_df['ticket_family'] == family) & 
-        (processed_df['ticket_num'] > 0)
-    ]['ticket_num'].mean()
-    
-    if family_avg_sales > 0:
-        family_score = min(1.0, family_avg_sales / 100.0)
-    else:
-        family_score = 0.1
-    
-    probability_score += family_score * 0.1
-    
-    return min(1.0, max(0.0, probability_score))
 
 
 
@@ -173,7 +86,7 @@ def predict_next_365_days():
     # --- 1. Load All Data, Models, and Profiles ---
     print("Step 1: Loading all data, models, and profiles...")
     try:
-        with open(MODEL_PATH, 'rb') as f:
+        with open(MODELS_DIR, 'rb') as f:
             model = pickle.load(f)
         
         with open(FAMILY_MODELS_PATH, 'rb') as f:
@@ -182,10 +95,9 @@ def predict_next_365_days():
         with open(FEATURE_COLS_PATH, 'rb') as f:
             model_features = pickle.load(f)
         
-        ticket_families_df = pd.read_csv(TICKET_FAMILIES_PATH)
+        ticket_families_df = pd.read_excel(TICKET_FAMILIES_PATH)
         ticket_families = dict(zip(ticket_families_df['ticket_name'], ticket_families_df['ticket_family']))
         
-        seasonality_df = pd.read_csv(SEASONALITY_PROFILE_PATH)
         holiday_og_df = pd.read_excel(HOLIDAY_DATA_PATH)
         camp_og_df = pd.read_excel(CAMPAIGN_DATA_PATH)
         recurring_og_df = pd.read_excel(RECURRING_EVENTS_PATH)
@@ -212,38 +124,7 @@ def predict_next_365_days():
             .astype('int8')
         )
     
-    # Train binary classification model
-    print("Training binary classification model...")
-    
-    # MAXIMUM FEATURE REMOVAL to prevent overfitting
-    binary_features = [col for col in model_features 
-                       if not any(x in col for x in ['sales_lag', 'sales_rolling', 'sales_momentum', 'sales_trend', 'family_', 'ticket_', 'campaign_strength']) 
-                       and col not in ['ticket_num', 'date', 'ticket_name', 'ticket_family', 'has_sales']]
-    
-    X_binary = processed_df[binary_features]
-    y_binary = processed_df['has_sales']
-    
-    # Add regularization to prevent overfitting
-    binary_model = RandomForestClassifier(
-        n_estimators=50,  # Reduced from 100
-        max_depth=5,      # Limit tree depth
-        min_samples_leaf=20,  # Require more samples per leaf
-        random_state=42, 
-        n_jobs=-1
-    )
-    binary_model.fit(X_binary, y_binary)
-    
-    # WARN if accuracy is too high
-    binary_accuracy = binary_model.score(X_binary, y_binary)
-    print(f"Binary model trained: {binary_accuracy:.3f} accuracy")
-    if binary_accuracy > 0.95:
-        print("⚠️  WARNING: Binary model accuracy is suspiciously high (>0.95). May be overfitting!")
-        print("⚠️  Consider removing more features or adding regularization.")
-    
-    # Save binary model
-    with open("data/processed/binary_model.pkl", "wb") as f:
-        pickle.dump(binary_model, f)
-    
+
     # Calculate bias correction factor from validation data
     print("Calculating bias correction factors...")
     
@@ -270,10 +151,10 @@ def predict_next_365_days():
     bias_correction_factors = {}
     if len(val_df) == 0:
         print("ERROR: No validation data found. Using bias correction = 1.0 for all families")
-        bias_correction_factors = {f: 1.0 for f in ['subscription', 'general', 'single_day', 'group_package', 'fixed_seasonal']}
+        bias_correction_factors = {f: 1.0 for f in ['subscription', 'general', 'subscription']}
     else:
         # FAMILY-SPECIFIC bias correction
-        for family in ['subscription', 'general', 'single_day', 'group_package', 'fixed_seasonal']:
+        for family in ['subscription', 'general', 'subscription']:
             family_val_df = val_df[val_df['ticket_family'] == family]
             if len(family_val_df) > 0:
                 family_val_features = family_val_df[model_features].copy()
@@ -295,7 +176,7 @@ def predict_next_365_days():
     
     # Load family performance metrics
     try:
-        with open("data/processed/model_performance.pkl", 'rb') as f:
+        with open(MODELS_DIR / "/model_performance.pkl", 'rb') as f:
             performance_data = pickle.load(f)
             family_performance = performance_data.get('family_models', {})
     except:
@@ -343,7 +224,7 @@ def predict_next_365_days():
         ticket_history_lookup[ticket_name] = ticket_data
     
     # Get ticket-specific historical max for capping predictions
-    ticket_max_sales = processed_df.groupby('ticket_name')['ticket_num'].max().to_dict()
+    # ticket_max_sales = processed_df.groupby('ticket_name')['ticket_num'].max().to_dict()
 
     # --- 4. Prepare Future Data & Fallbacks ---
     print("Step 4: Preparing future weather data and fallbacks...")
@@ -372,12 +253,6 @@ def predict_next_365_days():
             
             # Get ticket history
             ticket_history = ticket_history_lookup.get(ticket_name, pd.Series())
-            
-            # Calculate activation probability
-            activation_prob = calculate_ticket_activation_probability(
-                ticket_name, current_date, current_month, seasonality_df,
-                ticket_history, ticket_families_full, processed_df
-            )
             
             # A. Date features
             date_features = {
@@ -549,14 +424,6 @@ def predict_next_365_days():
                     except:
                         input_df[col] = 0
             
-
-            # I. Binary classification prediction (use only for curiosity, not dampening)
-            binary_input = input_df[binary_features].copy()
-            for col in binary_features:
-                if binary_input[col].dtype == 'object':
-                    binary_input[col] = pd.to_numeric(binary_input[col], errors='coerce')
-            
-            will_sell_prob = binary_model.predict_proba(binary_input)[0][1]
             
             # J. Seasonal baseline
             seasonal_avg = processed_df[
@@ -571,18 +438,7 @@ def predict_next_365_days():
             predicted_sales_raw = create_family_level_predictions(
                 model, family_models, input_df, ticket_name, ticket_family, family_performance
             )
-            
-            # Only minimal safety net: ensure predictions are reasonable
-            # If activation probability is very low AND no recent sales history, dampen slightly
-            if activation_prob < 0.10 and ticket_history.sum() == 0:
-                # This ticket has never sold and activation is low - heavy dampening
-                predicted_sales = predicted_sales_raw * 0.1
-            elif activation_prob < 0.15:
-                # Light dampening for low confidence
-                predicted_sales = predicted_sales_raw * 0.5
-            else:
-                # TRUST THE MODEL for everything else
-                predicted_sales = predicted_sales_raw
+        
             
             # L. Apply global calibration (CRITICAL - this fixes the scale)
             predicted_sales = predicted_sales * global_calibration
@@ -590,18 +446,12 @@ def predict_next_365_days():
             # M. Blend with seasonal baseline (very light - just 5%)
             predicted_sales = (0.95 * predicted_sales) + (0.05 * seasonal_avg)
             
-            # N. Cap at historical maximum
-            historical_max = ticket_max_sales.get(ticket_name, 1000)
-            final_prediction = max(0, min(round(predicted_sales), historical_max))
-            
             # Always add to predictions (including zeros) for proper aggregation
             day_predictions.append({
                 "date": current_date,
                 "ticket_name": ticket_name,
                 "ticket_family": ticket_family,
                 "predicted_sales": final_prediction,
-                "activation_probability": activation_prob,
-                "binary_probability": will_sell_prob,
                 "raw_prediction": predicted_sales_raw,
                 "seasonal_baseline": seasonal_avg
             })
@@ -641,3 +491,145 @@ def predict_next_365_days():
 
 if __name__ == "__main__":
     predict_next_365_days()
+
+
+
+
+
+
+    # # Train binary classification model
+    # print("Training binary classification model...")
+    
+    # # MAXIMUM FEATURE REMOVAL to prevent overfitting
+    # binary_features = [col for col in model_features 
+    #                    if not any(x in col for x in ['sales_lag', 'sales_rolling', 'sales_momentum', 'sales_trend', 'family_', 'ticket_', 'campaign_strength']) 
+    #                    and col not in ['ticket_num', 'date', 'ticket_name', 'ticket_family', 'has_sales']]
+    
+    # X_binary = processed_df[binary_features]
+    # y_binary = processed_df['has_sales']
+    
+    # # Add regularization to prevent overfitting
+    # binary_model = RandomForestClassifier(
+    #     n_estimators=50,  # Reduced from 100
+    #     max_depth=5,      # Limit tree depth
+    #     min_samples_leaf=20,  # Require more samples per leaf
+    #     random_state=42, 
+    #     n_jobs=-1
+    # )
+    # binary_model.fit(X_binary, y_binary)
+    
+    # # WARN if accuracy is too high
+    # binary_accuracy = binary_model.score(X_binary, y_binary)
+    # print(f"Binary model trained: {binary_accuracy:.3f} accuracy")
+    # if binary_accuracy > 0.95:
+    #     print("⚠️  WARNING: Binary model accuracy is suspiciously high (>0.95). May be overfitting!")
+    #     print("⚠️  Consider removing more features or adding regularization.")
+    
+    # # Save binary model
+    # with open("data/processed/binary_model.pkl", "wb") as f:
+    #     pickle.dump(binary_model, f)
+
+
+# def calculate_ticket_activation_probability(ticket_name, current_date, current_month, seasonality_df, 
+#                                            ticket_history, ticket_families, processed_df):
+#     """
+#     Calculate activation probability for a ticket type based on multiple signals
+#     Returns probability score between 0 and 1
+#     """
+#     probability_score = 0.0
+    
+#     # 1. Seasonality Score (40% weight)
+#     seasonality_df['active_months_list'] = seasonality_df['active_months'].astype(str).str.split(',')
+#     is_seasonal = seasonality_df[
+#         seasonality_df['active_months_list'].apply(lambda x: str(current_month) in x)
+#     ]['ticket_name'].tolist()
+    
+#     if ticket_name in is_seasonal:
+#         seasonality_score = 0.8
+#     else:
+#         historical_month_sales = processed_df[
+#             (processed_df['ticket_name'] == ticket_name) & 
+#             (processed_df['date'].dt.month == current_month) &
+#             (processed_df['ticket_num'] > 0)
+#         ]
+#         seasonality_score = min(1.0, len(historical_month_sales) / 30.0) * 0.6
+    
+#     probability_score += seasonality_score * 0.4
+    
+#     # 2. Recency Score (30% weight)
+#     last_sale_date = ticket_history.index.max() if not ticket_history.empty else None
+#     if last_sale_date:
+#         days_since_last_sale = (current_date - last_sale_date).days
+#         if days_since_last_sale <= 7:
+#             recency_score = 1.0
+#         elif days_since_last_sale <= 30:
+#             recency_score = 0.7
+#         elif days_since_last_sale <= 60:
+#             recency_score = 0.4
+#         else:
+#             recency_score = 0.1
+#     else:
+#         recency_score = 0.0
+    
+#     probability_score += recency_score * 0.3
+    
+#     # 3. Weekday Pattern Score (20% weight)
+#     current_weekday = current_date.weekday()
+#     weekday_sales = processed_df[
+#         (processed_df['ticket_name'] == ticket_name) & 
+#         (processed_df['date'].dt.weekday == current_weekday) &
+#         (processed_df['ticket_num'] > 0)
+#     ]
+    
+#     if len(weekday_sales) > 0:
+#         weekday_score = min(1.0, len(weekday_sales) / 10.0)
+#     else:
+#         weekday_score = 0.2
+    
+#     probability_score += weekday_score * 0.2
+    
+#     # 4. Ticket Family Baseline Score (10% weight)
+#     family = ticket_families.get(ticket_name, 'general')
+#     family_avg_sales = processed_df[
+#         (processed_df['ticket_family'] == family) & 
+#         (processed_df['ticket_num'] > 0)
+#     ]['ticket_num'].mean()
+    
+#     if family_avg_sales > 0:
+#         family_score = min(1.0, family_avg_sales / 100.0)
+#     else:
+#         family_score = 0.1
+    
+#     probability_score += family_score * 0.1
+    
+#     return min(1.0, max(0.0, probability_score))
+
+
+            # # I. Binary classification prediction (use only for curiosity, not dampening)
+            # binary_input = input_df[binary_features].copy()
+            # for col in binary_features:
+            #     if binary_input[col].dtype == 'object':
+            #         binary_input[col] = pd.to_numeric(binary_input[col], errors='coerce')
+            
+            # will_sell_prob = binary_model.predict_proba(binary_input)[0][1]
+
+
+
+
+            # # N. Cap at historical maximum
+            # historical_max = ticket_max_sales.get(ticket_name, 1000)
+            # final_prediction = max(0, min(round(predicted_sales), historical_max))
+
+
+
+            # # Only minimal safety net: ensure predictions are reasonable
+            # # If activation probability is very low AND no recent sales history, dampen slightly
+            # if activation_prob < 0.10 and ticket_history.sum() == 0:
+            #     # This ticket has never sold and activation is low - heavy dampening
+            #     predicted_sales = predicted_sales_raw * 0.1
+            # elif activation_prob < 0.15:
+            #     # Light dampening for low confidence
+            #     predicted_sales = predicted_sales_raw * 0.5
+            # else:
+            #     # TRUST THE MODEL for everything else
+            #     predicted_sales = predicted_sales_raw
