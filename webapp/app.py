@@ -34,6 +34,20 @@ def login_submit():
         return redirect(url_for("home"))
     return render_template("Loginpage.html", error="Incorrect username or password.")
 
+
+@app.route("/save_variables", methods=["POST"])
+def save_variables():
+    global saved_slider_values
+    try:
+        saved_slider_values = request.json
+        print("\n--- Slider Variables Received ---")
+        for key, value in saved_slider_values.items():
+            print(f"{key.capitalize():<10}: {value}")
+        print("---------------------------------\n")
+        return jsonify({"status": "success", "saved": saved_slider_values})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 400
+
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 UPLOAD_FOLDER = os.path.join(PROJECT_ROOT, "data", "upload")
