@@ -78,12 +78,16 @@
         </div>
     </div>
 
-    <div class="widget">
-<div class="widget upload-widget">
+  <div class="widget upload-widget">
     <h3>Upload Data</h3>
     <div class="content-box link-box">
         <form action="{{ url_for('upload_file') }}" method="POST" enctype="multipart/form-data" class="upload-form">
-            <input type="file" name="file" accept=".csv, .xlsx, .xls" required class="file-input">
+            <label class="file-label">
+                <input type="file" name="file" accept=".csv, .xlsx, .xls" required hidden>
+                Choose file
+            </label>
+
+            <span class="file-name">No file chosen</span>
             <input type="submit" value="Upload" class="upload-btn">
         </form>
 
@@ -91,10 +95,7 @@
             Checking for uploaded files...
         </div>
     </div>
-    </div>
 </div>
-
-
 
     <div class="widget manual-link">
         <h3>Manual Controls</h3>

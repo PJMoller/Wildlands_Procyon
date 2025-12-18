@@ -600,3 +600,28 @@ h2 {
     flex-direction: column;
     gap: 15px;
 }
+/* ---------- FILE INPUT CUSTOM ---------- */
+
+.file-label {
+    background-color: var(--bg-content);
+    color: var(--text-light);
+    padding: 14px 20px;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    font-weight: 600;
+    text-align: center;
+    transition: all 0.3s;
+    border: 2px dashed #555;
+}
+
+.file-label:hover {
+    background-color: var(--accent-blue);
+    border-color: var(--accent-blue);
+    transform: translateY(-2px);
+}
+
+.file-name {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    text-align: center;
+}
