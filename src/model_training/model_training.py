@@ -12,6 +12,8 @@ import pickle
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from sklearn.base import clone
 from sklearn.metrics import make_scorer
 from paths import MODELS_DIR, PROCESSED_DIR, PREDICTIONS_DIR

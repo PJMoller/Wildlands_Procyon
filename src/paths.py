@@ -26,9 +26,7 @@ PROCESSED_DATA_PATH = PROCESSED_DIR / "processed_merge.csv"
 HOLIDAY_DATA_PATH = RAW_DIR / "Holidays 2022-2026 Netherlands and Germany.xlsx"
 CAMPAIGN_DATA_PATH = RAW_DIR / "campaigns 2022-2026.xlsx"
 RECURRING_EVENTS_PATH = RAW_DIR / "recurring_events_drenthe.xlsx"
-SEASONALITY_PROFILE_PATH = PROCESSED_DIR / "ticket_seasonality.csv"
 TICKET_FAMILIES_PATH = RAW_DIR / "ticketfamilies.xlsx"
-
 
 
 NEW_ATTEMPT_DIR = SRC_DIR / "new_attempt"

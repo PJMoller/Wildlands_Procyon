@@ -19,6 +19,10 @@ def process_data():
         weather_og_df = pd.read_excel(RAW_DIR / "weather.xlsx")
     except Exception as e:
         print(f"Error loading weather data: {e}"); return
+    try:
+        weather22_23_og_df = pd.read_csv(RAW_DIR / "WeatherData2022_2023.csv", skiprows=3, nrows=17520)
+    except Exception as e:
+        print(f"Error loading 2022-2023 weather data: {e}"); return
     
     try:
         holiday_og_df = pd.read_excel(RAW_DIR / "Holidays 2022-2026 Netherlands and Germany.xlsx")
@@ -38,7 +42,7 @@ def process_data():
     try:
         ticketfam_og_df = pd.read_excel(RAW_DIR / "ticketfamilies.xlsx")
     except Exception as e:
-        print(f"Error loading recurring events data: {e}"); return
+        print(f"Error loading ticket families data: {e}"); return
 
 
 
@@ -76,13 +80,21 @@ def process_data():
     
     # --- Weather Data Processing ---
     weather_og_df.columns = ["date", "temperature", "rain", "precipitation", "hour"]
-    weather_og_df["grouping_date"] = weather_og_df["date"].dt.date
-    weather_og_df['rain_morning'] = np.where(weather_og_df['hour'] < 12, weather_og_df['rain'], 0)
-    weather_og_df['rain_afternoon'] = np.where(weather_og_df['hour'] >= 12, weather_og_df['rain'], 0)
-    weather_og_df['precip_morning'] = np.where(weather_og_df['hour'] < 12, weather_og_df['precipitation'], 0)
-    weather_og_df['precip_afternoon'] = np.where(weather_og_df['hour'] >= 12, weather_og_df['precipitation'], 0)
-    weather_og_df['date'] = pd.to_datetime(weather_og_df['date']).dt.date
-    weather_daily = weather_og_df.groupby("grouping_date").agg(
+
+    weather22_23_og_df.columns = ["date","temperature", "rain", "hum", "precipitation", "snow"]
+    weather22_23_og_df = weather22_23_og_df.drop(["hum", "snow"], axis=1)
+    weather22_23_og_df["date"] = pd.to_datetime(weather22_23_og_df["date"])
+    weather22_23_og_df["hour"] = weather22_23_og_df["date"].dt.hour
+    weather22_23_og_df["date"] = weather22_23_og_df["date"].dt.date
+    weather_og_df["date"] = pd.to_datetime(weather_og_df["date"]).dt.date
+    weather_combined = pd.concat([weather_og_df, weather22_23_og_df],ignore_index=True)
+
+    weather_combined["grouping_date"] = weather_combined["date"]
+    weather_combined['rain_morning'] = np.where(weather_combined['hour'] < 12, weather_combined['rain'], 0)
+    weather_combined['rain_afternoon'] = np.where(weather_combined['hour'] >= 12, weather_combined['rain'], 0)
+    weather_combined['precip_morning'] = np.where(weather_combined['hour'] < 12, weather_combined['precipitation'], 0)
+    weather_combined['precip_afternoon'] = np.where(weather_combined['hour'] >= 12, weather_combined['precipitation'], 0)
+    weather_daily = weather_combined.groupby("grouping_date").agg(
         temperature=('temperature', 'mean'), 
         rain_morning=('rain_morning', 'sum'), 
         rain_afternoon=('rain_afternoon', 'sum'), 
@@ -135,7 +147,7 @@ def process_data():
     recurring_df = recurring_df.drop_duplicates(subset=['date', 'event_name'])
 
 
-    weather_combined = weather_daily.copy()
+    weather_final = weather_daily.copy()
     events_pivot = recurring_df.pivot_table(index='date', columns='event_name', aggfunc='size', fill_value=0).astype(int)
     events_pivot.columns = [f'event_{col}' for col in events_pivot.columns]
     events_pivot = events_pivot.reset_index()
@@ -149,8 +161,9 @@ def process_data():
     print("Expanding data to include zero-sale days...")
     # CRITICAL: Create full 2022-2025 date range using last sales date
     last_sales_date = visitor_df['date'].max()
+    first_sales_date = visitor_df['date'].min()
     # earlier days are missing a lot of data since we have nothing for them or completely 0's
-    all_dates = pd.date_range(start='2024-01-01', end=last_sales_date, freq='D')
+    all_dates = pd.date_range(start=first_sales_date, end=last_sales_date, freq='D')
     all_tickets = visitor_df['ticket_name'].unique()
     
     print(f"Creating {len(all_dates)} dates × {len(all_tickets)} tickets = {len(all_dates) * len(all_tickets):,} rows")
@@ -209,7 +222,7 @@ def process_data():
     # --- Merge with COMBINED weather, holidays, campaigns, events ---
     print("Merging with all external data...")
     merged_df = expanded_df.copy()
-    merged_df = pd.merge(merged_df, weather_combined, on="date", how="left")
+    merged_df = pd.merge(merged_df, weather_final, on="date", how="left")
     merged_df = pd.merge(merged_df, final_holiday_df, on="date", how="left")
     merged_df = pd.merge(merged_df, events_combined, on="date", how="left")
     
@@ -364,11 +377,11 @@ def process_data():
     print("One-hot encoding categorical variables...")
     
     # Ticket type one-hot encoding
-    ticket_dummies = pd.get_dummies(merged_df['ticket_name'], prefix='ticket')
+    ticket_dummies = pd.get_dummies(merged_df['ticket_name'], prefix='ticket', dtype=int)
     merged_df = pd.concat([merged_df, ticket_dummies], axis=1)
     
     # Ticket family one-hot encoding
-    family_dummies = pd.get_dummies(merged_df['ticket_family'], prefix='family')
+    family_dummies = pd.get_dummies(merged_df['ticket_family'], prefix='family', dtype=int)
     merged_df = pd.concat([merged_df, family_dummies], axis=1)
     
 
@@ -383,7 +396,10 @@ def process_data():
     print(f"Ticket types: {merged_df['ticket_name'].nunique()}")
     print(f"Ticket families: {merged_df['ticket_family'].value_counts().to_dict()}")
 
-    merged_df.sort_values(['ticket_name', 'date'], inplace=True)
+    # droppping useless columns
+    #merged_df = merged_df.drop(["ticket_name","ticket_family"], axis=1)
+
+    merged_df.sort_values(['date'], inplace=True)
     merged_df.reset_index(drop=True, inplace=True)
     # Save processed data
     print("Saving processed data...")
