@@ -1,3 +1,35 @@
+if (window.location.pathname === "/login") {
+    console.log("Login page detected — skipping dashboard JS");
+} else {
+    document.addEventListener('DOMContentLoaded', () => {
+        const chartButtons = document.querySelectorAll('.chart-options button');
+        const startDateInput = document.getElementById('start-date');
+
+        if (!startDateInput) return;
+
+        startDateInput.value = new Date().toISOString().split('T')[0];
+
+        loadChart('week', startDateInput.value);
+        loadTodayWidgets();
+        loadDaySummary(startDateInput.value);
+        loadUploadStatus();
+
+        chartButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                chartButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                loadChart(btn.dataset.range, startDateInput.value);
+            });
+        });
+
+        startDateInput.addEventListener('change', () => {
+            const activeBtn = document.querySelector('.chart-options button.active');
+            loadChart(activeBtn.dataset.range, startDateInput.value);
+            loadDaySummary(startDateInput.value);
+        });
+    });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
 
     const chartButtons = document.querySelectorAll('.chart-options button');

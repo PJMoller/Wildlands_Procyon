@@ -12,6 +12,22 @@ app.secret_key = os.environ.get("SECRET_KEY", "fallback_dev_key")
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(APP_DIR, "database.db")
 
+def init_db():
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+init_db()
+
+
 def check_user(username, password):
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
@@ -60,10 +76,20 @@ def allowed_file(filename):
 
 CSV_PATH = os.path.join(PROJECT_ROOT, "data", "predictions", "app_predictions_365days.csv")
 
-df = pd.read_csv(CSV_PATH, low_memory=False)
-df["date"] = pd.to_datetime(df["date"], errors="coerce")
-df = df.dropna(subset=["date"])
-df["date"] = df["date"].dt.normalize()
+def load_df():
+    df = pd.read_csv(CSV_PATH, low_memory=False)
+    df["date"] = pd.to_datetime(df["date"], errors="coerce")
+    df = df.dropna(subset=["date"])
+    df["date"] = df["date"].dt.normalize()
+    return df
+
+df = None
+
+def get_df():
+    global df
+    if df is None:
+        df = load_df()
+    return df
 
 saved_slider_values = {}
 
@@ -83,12 +109,15 @@ def slider():
 def get_visitors():
     range_type = request.args.get("range", "week")
     date_str = request.args.get("date")
+
+    df_local = get_df()
+
     try:
         selected_date = pd.to_datetime(date_str).normalize()
     except:
-        selected_date = df["date"].max()
+        selected_date = get_df()["date"].max()
 
-    data = df.copy()
+    data = df_local.copy()
 
     if range_type == "week":
         start = selected_date - pd.Timedelta(days=selected_date.weekday())
@@ -102,8 +131,8 @@ def get_visitors():
     elif range_type == "day":
         start = end = selected_date
     else:
-        start = df["date"].max() - pd.Timedelta(days=6)
-        end = df["date"].max()
+        start = df_local["date"].max() - pd.Timedelta(days=6)
+        end = df_local["date"].max()
 
     data = data[(data["date"] >= start) & (data["date"] <= end)]
 
@@ -117,8 +146,9 @@ def today_info():
     today = pd.Timestamp.today().normalize()
     tomorrow = today + pd.Timedelta(days=1)
 
-    today_row = df[df["date"] == today]
-    tomorrow_row = df[df["date"] == tomorrow]
+    df_local = get_df()
+    today_row = df_local[df_local["date"] == today]
+    tomorrow_row = df_local[df_local["date"] == tomorrow]
 
     return jsonify({
         "today": {
@@ -136,12 +166,13 @@ def day_tickets():
     date_str = request.args.get("date")
     selected_date = pd.to_datetime(date_str).normalize()
 
-    row = df[df["date"] == selected_date]
+    df_local = get_df()
+    row = df_local[df_local["date"] == selected_date]
     if row.empty:
         return jsonify({"error": "No data"}), 404
 
     row = row.iloc[0]
-    ticket_columns = [c for c in df.columns if c.startswith("ticket_")]
+    ticket_columns = [c for c in df_local.columns if c.startswith("ticket_")]
 
     tickets = {
         c.replace("ticket_", ""): int(row[c]) if not pd.isna(row[c]) else 0
