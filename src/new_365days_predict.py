@@ -580,7 +580,25 @@ def predict_next_365_days():
                 "ticket_name": ticket_name,
                 "ticket_family": ticket_family,
                 "predicted_sales": float(pred),
-                "model_used": model_used
+                "model_used": model_used,
+                # WEATHER
+                "temperature": temperature,
+                "rain": rain_morning + rain_afternoon,
+                "precipitation": precip_morning + precip_afternoon,
+                # HOLIDAYS (all one-hot from holiday_feats)
+                **{k: int(v or 0) for k, v in holiday_feats.items()},
+                # CAMPAIGNS
+                "campaign_strength": _safe_float(camp_feats.get("campaign_strength", 0.0), 0.0),
+                "promotion_active": _safe_int(camp_feats.get("promotion_active", 0), 0),
+                "campaign_regions_active": _safe_int(camp_feats.get("campaign_regions_active", 0), 0),
+                # EVENTS (all event columns)
+                **{k: int(v or 0) for k, v in event_feats.items()},
+                # DATE FEATURES
+                "year": year,
+                "month": month,
+                "week": week,
+                "day": day,
+                "weekday": weekday
             })
 
         # roll prev_family_totals forward (for next day)
