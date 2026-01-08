@@ -48,7 +48,7 @@ def process_data():
 
     # --- Visitor Data Processing ---
     visitor_og_df.columns = ["date", "groupID", "ticket_name", "ticket_num"]
-    visitor_og_df["date"] = pd.to_datetime(visitor_og_df["date"], dayfirst=True)
+    visitor_og_df["date"] = pd.to_datetime(visitor_og_df["date"])
     visitor_df = visitor_og_df.copy()
 
     
