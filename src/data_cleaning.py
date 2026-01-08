@@ -3,7 +3,7 @@ import pandas as pd
 import pandas.api.types as ptypes
 import numpy as np
 from datetime import timedelta
-from paths import RAW_DIR, PROCESSED_DIR
+from .paths import RAW_DIR, PROCESSED_DIR
 PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
 
 
@@ -15,6 +15,24 @@ def process_data():
     except Exception as e:
         print(f"Error loading visitor data: {e}"); return
     
+    # --- VALIDATION: visitor data ---
+    if visitor_og_df.empty:
+        print("DataFrame 0 is empty")
+        return
+
+    expected_cols = {
+        "Date",
+        "AccessGroupId",
+        "Description",
+        "NumberOfUsedEntrances",
+    }
+
+    if not expected_cols.issubset(visitor_og_df.columns):
+        print("DataFrame 0 is missing required columns")
+        return
+
+
+    # --- Data Loading ---
     try:
         weather_og_df = pd.read_excel(RAW_DIR / "weather.xlsx")
     except Exception as e:
@@ -47,11 +65,22 @@ def process_data():
 
 
     # --- Visitor Data Processing ---
-    visitor_og_df.columns = ["date", "groupID", "ticket_name", "ticket_num"]
+    visitor_og_df.rename(columns={
+        "Date": "date",
+        "AccessGroupId": "groupID",
+        "Description": "ticket_name"
+    }, inplace=True)
+
     visitor_og_df["date"] = pd.to_datetime(visitor_og_df["date"], dayfirst=True)
     visitor_df = visitor_og_df.copy()
 
-    
+    # Merge ticket numbers from ticket family mapping
+    ticket_families = dict(zip(ticketfam_og_df['Subgroup'], ticketfam_og_df['ticket_num']))
+    visitor_df['ticket_num'] = visitor_df['ticket_name'].map(ticket_families)
+
+    # Fill missing ticket_num with 0
+    visitor_df['ticket_num'] = visitor_df['ticket_num'].fillna(0).astype(int)
+
     print(f"Removed non-visitor tickets. Remaining: {len(visitor_df)} rows")
     
     # CRITICAL FIX 2: Add ticket type indicators from NAMES (since you don't have discount %)
@@ -184,7 +213,7 @@ def process_data():
     expanded_df['ticket_family'] = expanded_df['ticket_name'].map(ticket_families)
     
     # Find available episodes (when tickets were actively sold)
-    g = visitor_og_df[visitor_og_df['ticket_num'] > 0].copy()
+    g = visitor_df[visitor_df['ticket_num'] > 0].copy()
     g = g.sort_values(['ticket_name', 'date'])
     
     gap_days = 15
@@ -404,7 +433,7 @@ def process_data():
     # Save processed data
     print("Saving processed data...")
     merged_df.to_csv(PROCESSED_DIR / "processed_merge.csv", index=False)
-    
+    return merged_df
 
 
 
