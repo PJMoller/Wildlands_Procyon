@@ -449,7 +449,9 @@ def predict_next_365_days(forecast_days: int = 365, openmeteo_days: int = 14, ma
     all_rows = []
 
     for step in range(forecast_days):
-        current_date = (last_known_date + timedelta(days=step + 1)).normalize()
+        today = pd.Timestamp.now().normalize()
+        current_date = today + timedelta(days=step)
+
         year, month, day = current_date.year, current_date.month, current_date.day
         weekday, week = current_date.weekday(), current_date.isocalendar().week
         doy = current_date.dayofyear
@@ -569,6 +571,9 @@ def predict_next_365_days(forecast_days: int = 365, openmeteo_days: int = 14, ma
             
         if step % 30 == 0:
             print(f"Day {step+1}: {int(sum(x[2] for x in scaled)):,} tickets")
+
+    print(f"Predictions start: {today.date()} → {current_date.date()}")
+
 
     # ---------- Export ----------
     forecast_df = pd.DataFrame(all_rows)
