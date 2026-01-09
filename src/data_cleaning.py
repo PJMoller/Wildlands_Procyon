@@ -22,7 +22,7 @@ def process_data():
 
     expected_cols = {
         "Date",
-        "AccessGroupId",
+        "SubgroupId",
         "Description",
         "NumberOfUsedEntrances",
     }
@@ -63,26 +63,63 @@ def process_data():
         print(f"Error loading ticket families data: {e}"); return
 
 
+    # print(" ticketfamilies.xlsx loaded")
+    # print("Columns:", list(ticketfam_og_df.columns))
+    # print("Head:\n", ticketfam_og_df.head(3).to_string())
 
     # --- Visitor Data Processing ---
     visitor_og_df.rename(columns={
         "Date": "date",
-        "AccessGroupId": "groupID",
+        "SubgroupId": "groupID",
         "Description": "ticket_name"
     }, inplace=True)
 
-    visitor_og_df["date"] = pd.to_datetime(visitor_og_df["date"], dayfirst=True)
+    visitor_og_df["date"] = pd.to_datetime(visitor_og_df["date"])
     visitor_df = visitor_og_df.copy()
 
+#-------------------------------------------
+
+
     # Merge ticket numbers from ticket family mapping
-    ticket_families = dict(zip(ticketfam_og_df['Subgroup'], ticketfam_og_df['ticket_num']))
-    visitor_df['ticket_num'] = visitor_df['ticket_name'].map(ticket_families)
+    # ticket_families = dict(zip(ticketfam_og_df['Subgroup'], ticketfam_og_df['ticket_num']))
+    # visitor_df['ticket_num'] = visitor_df['ticket_name'].map(ticket_families)
 
     # Fill missing ticket_num with 0
-    visitor_df['ticket_num'] = visitor_df['ticket_num'].fillna(0).astype(int)
-
+    # visitor_df['ticket_num'] = visitor_df['ticket_num'].fillna(0).astype(int)
+#-----------------------------------------------
     print(f"Removed non-visitor tickets. Remaining: {len(visitor_df)} rows")
     
+        # ROBUST TICKET MAPPING (handles missing columns)
+    print(" Auto-detecting ticketfamilies columns...")
+
+    # Find numeric column for ticket_num (or default to 1)
+    numeric_cols = ticketfam_og_df.select_dtypes(include=['number']).columns
+    if 'ticket_num' in ticketfam_og_df.columns:
+        ticket_num_col = 'ticket_num'
+    elif len(numeric_cols) > 0:
+        ticket_num_col = numeric_cols[0]
+        print(f"Using '{ticket_num_col}' for ticket numbers")
+    else:
+        print("No numeric col - default ticket_num=1")
+        ticketfam_og_df['ticket_num'] = 1
+        ticket_num_col = 'ticket_num'
+
+    ticket_num_map = dict(zip(ticketfam_og_df['Subgroup'], ticketfam_og_df[ticket_num_col]))
+    visitor_df['ticket_num'] = visitor_df['ticket_name'].map(ticket_num_map).fillna(1).astype(int)
+
+    # Family mapping (or use ticket_name as fallback)
+    if 'ticket_family' in ticketfam_og_df.columns:
+        ticket_family_map = dict(zip(ticketfam_og_df['Subgroup'], ticketfam_og_df['ticket_family']))
+    else:
+        print("No 'ticket_family' col - using ticket_name")
+        ticket_family_map = dict(zip(ticketfam_og_df['Subgroup'], ticketfam_og_df['Subgroup']))
+
+    visitor_df['ticket_family'] = visitor_df['ticket_name'].map(ticket_family_map)
+    print(f" Mapped {len(ticket_num_map)} tickets | Samples: {dict(list(ticket_num_map.items())[:3])}")
+
+
+
+
     # CRITICAL FIX 2: Add ticket type indicators from NAMES (since you don't have discount %)
     print("Creating ticket type indicators...")
     ticket_name_lower = visitor_df['ticket_name'].str.lower()
@@ -104,9 +141,9 @@ def process_data():
     # Create ticket family mapping dynamically
     print("Creating ticket family classifications...")
     ###################################
-    ticket_families = dict(zip(ticketfam_og_df['Subgroup'], ticketfam_og_df['ticket_family']))
-    visitor_df.loc[:, 'ticket_family'] = visitor_df['ticket_name'].map(ticket_families)
-    
+    # ticket_families = dict(zip(ticketfam_og_df['Subgroup'], ticketfam_og_df['ticket_family']))
+    # visitor_df.loc[:, 'ticket_family'] = visitor_df['ticket_name'].map(ticket_families)
+    ##################################
     # --- Weather Data Processing ---
     weather_og_df.columns = ["date", "temperature", "rain", "precipitation", "hour"]
 
@@ -140,7 +177,7 @@ def process_data():
 
     # --- Holiday & Recurring Events Data Processing ---
     holiday_og_df.columns = ["NLNoord", "NLMidden", "NLZuid", "Niedersachsen", "Nordrhein-Westfalen", "date", "week"]
-    holiday_og_df.drop("week", axis=1)
+    holiday_og_df =holiday_og_df.drop("week", axis=1)
     region_cols = ["NLNoord", "NLMidden", "NLZuid", "Niedersachsen", "Nordrhein-Westfalen"]
     
     long_df = holiday_og_df.melt(id_vars=["date"], value_vars=region_cols, var_name="region", value_name="holiday")
@@ -208,10 +245,11 @@ def process_data():
     # MERGE with indicator columns preserved
     expanded_df = pd.merge(expanded_df, visitor_df[merge_cols], on=['date', 'ticket_name'], how='left')
     expanded_df['ticket_num'] = expanded_df['ticket_num'].fillna(0).astype(int)
-    
+#############################################################
     # Add family information AFTER merge (not in merge_cols)
-    expanded_df['ticket_family'] = expanded_df['ticket_name'].map(ticket_families)
-    
+# Add family information AFTER merge
+    expanded_df['ticket_family'] = expanded_df['ticket_name'].map(ticket_family_map)  # Use your map var
+###################################################    
     # Find available episodes (when tickets were actively sold)
     g = visitor_df[visitor_df['ticket_num'] > 0].copy()
     g = g.sort_values(['ticket_name', 'date'])
@@ -380,28 +418,61 @@ def process_data():
         else:
             return pd.Series(np.zeros(len(group), dtype=int), index=group.index)
 
-
-
-
-
     merged_df['days_since_available'] = merged_df.groupby('ticket_name')['is_available'].apply(
         calculate_days_since_available
     ).reset_index(level=0, drop=True)
     
-    # Add Family-Level Features
-    family_group = merged_df.groupby(['date', 'ticket_family'])['ticket_num'].sum().reset_index()
+####################################
+
+    # Add Family-Level Features (SAFE)
+    print("Creating family-level features...")
+    if 'ticket_family' in merged_df.columns:
+        print(f"Found {merged_df['ticket_family'].nunique()} families")
+        family_group = merged_df.groupby(['date', 'ticket_family'])['ticket_num'].sum().reset_index()
+    else:
+        print("⚠️ No ticket_family - using ticket_name")
+        family_group = merged_df.groupby(['date', 'ticket_name'])['ticket_num'].sum().reset_index()
+        family_group['ticket_family'] = family_group['ticket_name']
+
     family_pivot = family_group.pivot(index='date', columns='ticket_family', values='ticket_num').fillna(0)
     family_pivot.columns = [f'family_{col}_sales' for col in family_pivot.columns]
     merged_df = pd.merge(merged_df, family_pivot, on='date', how='left')
-    
-    # Drop rows with critical missing values
-    merged_df.dropna(subset=['ticket_num', 'date', 'ticket_name'], inplace=True)
-    
-    print("Removing Wildlands requested ticket types/families")
-    merged_df = merged_df[~merged_df['ticket_name'].str.contains('Inkoop overig|Inkoop E-Tickets', na=False)]
-    merged_df = merged_df[~merged_df['ticket_family'].isin(['group_package', 'b2b'])]
-    merged_df.drop(columns=[col for col in merged_df.columns if 'group_package' in col or 'b2b' in col], inplace=True)
 
+
+
+    # # Add Family-Level Features
+    # family_group = merged_df.groupby(['date', 'ticket_family'])['ticket_num'].sum().reset_index()
+    # family_pivot = family_group.pivot(index='date', columns='ticket_family', values='ticket_num').fillna(0)
+    # family_pivot.columns = [f'family_{col}_sales' for col in family_pivot.columns]
+    # merged_df = pd.merge(merged_df, family_pivot, on='date', how='left')
+    
+    # # Drop rows with critical missing values
+    # merged_df.dropna(subset=['ticket_num', 'date', 'ticket_name'], inplace=True)
+####################################    
+
+    print("Removing Wildlands requested ticket types/families")
+    # Always safe: filter by ticket_name
+    merged_df = merged_df[~merged_df['ticket_name'].str.contains('Inkoop overig|Inkoop E-Tickets', na=False)]
+
+    # Safe ticket_family filter
+    if 'ticket_family' in merged_df.columns:
+        merged_df = merged_df[~merged_df['ticket_family'].isin(['group_package', 'b2b'])]
+        print("Filtered group_package/b2b families")
+
+    # Safe column drop
+    cols_to_drop = [col for col in merged_df.columns if 'group_package' in col or 'b2b' in col]
+    if cols_to_drop:
+        merged_df.drop(columns=cols_to_drop, inplace=True)
+        print(f"Dropped {len(cols_to_drop)} family columns")
+    else:
+        print("No group_package/b2b columns to drop")
+
+    # print("Removing Wildlands requested ticket types/families")
+    # merged_df = merged_df[~merged_df['ticket_name'].str.contains('Inkoop overig|Inkoop E-Tickets', na=False)]
+    # merged_df = merged_df[~merged_df['ticket_family'].isin(['group_package', 'b2b'])]
+    # merged_df.drop(columns=[col for col in merged_df.columns if 'group_package' in col or 'b2b' in col], inplace=True)
+
+#####################################
     # --- One-Hot Encoding for Categorical Variables ---
     print("One-hot encoding categorical variables...")
     
