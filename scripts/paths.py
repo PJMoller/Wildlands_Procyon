@@ -29,8 +29,6 @@ RECURRING_EVENTS_PATH = RAW_DIR / "recurring_events_drenthe.xlsx"
 TICKET_FAMILIES_PATH = RAW_DIR / "ticketfamilies.xlsx"
 
 
-NEW_ATTEMPT_DIR = SRC_DIR / "new_attempt"
-
 print(f" PROJECT_ROOT: {PROJECT_ROOT}")  # Debug line
 print(f" RAW_DIR: {RAW_DIR}")
 
