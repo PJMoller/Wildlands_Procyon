@@ -2,79 +2,60 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Slider page</title>
+    <title>Slider Page</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body class="slider-page">
 <div class="container">
 
+    <!-- LEFT: VARIABLES -->
     <div class="widget current-day">
-        <h3>Variables</h3>
+        <h3>Adjust Variables</h3>
         <div class="content-box">
 
+            <!-- DATE -->
             <div class="variable">
-                <label for="rain">Rain</label>
-                <input type="range" id="rain" min="0" max="10" step="0.5" value="0.5">
-                <input type="number" id="rain-num" value="0.5" step="0.5" class="variable-value"> mm/h
+                <label for="date">Date</label>
+                <input type="date" id="date">
             </div>
 
+            <!-- RAIN -->
             <div class="variable">
-                <label for="weather">Weather</label>
-                <input type="range" id="weather" min="-5" max="35" step="1" value="16">
-                <input type="number" id="weather-num" value="16" class="variable-value"> °C
+                <label for="rain">Rainfall</label>
+                <input type="range" id="rain" min="0" max="20" step="0.5" value="0">
+                <input type="number" id="rain-num" value="0" step="0.5" class="variable-value"> mm
             </div>
 
+            <!-- TEMP -->
             <div class="variable">
-                <label for="event">Event</label>
-                <input type="range" id="event" min="0" max="5" step="1" value="1">
-                <input type="number" id="event-num" value="1" class="variable-value">
-            </div>
-
-            <div class="variable">
-                <label for="promo">Promo</label>
-                <input type="range" id="promo" min="0" max="100" step="5" value="50">
-                <input type="number" id="promo-num" value="50" class="variable-value"> %
-            </div>
-
-            <div class="variable">
-                <label for="holidays">Holidays</label>
-                <input type="range" id="holidays" min="0" max="10" step="1" value="0">
-                <input type="number" id="holidays-num" value="0" class="variable-value">
-            </div>
-
-            <div class="variable">
-                <label for="weekday">Weekday</label>
-                <input type="range" id="weekday" min="0" max="6" step="1" value="3">
-                <input type="number" id="weekday-num" value="3" step="1" class="variable-value">
-            </div>
-
-            <div class="variable">
-                <label for="month">Month</label>
-                <input type="range" id="month" min="1" max="12" step="1" value="6">
-                <input type="number" id="month-num" value="6" step="1" class="variable-value">
+                <label for="temp">Temperature</label>
+                <input type="range" id="temp" min="-5" max="35" step="1" value="15">
+                <input type="number" id="temp-num" value="15" class="variable-value"> °C
             </div>
 
         </div>
     </div>
 
+    <!-- RIGHT: GRAPH -->
     <div class="widget events">
-        <h3>Graph</h3>
+        <h3>Prediction Comparison</h3>
         <div class="content-box">
-            <p>Wednesday, Oct 1</p>
-            <canvas id="forecastChart" height="200"></canvas>
+            <canvas id="comparisonChart" height="220"></canvas>
         </div>
     </div>
 
+    <!-- RESULT -->
     <div class="widget forecast">
         <div class="content-box forecast-box">
             <button class="confirm-button">Calculate</button>
-            <p class="visitor-count">6.540</p>
-            <p class="forecast-note">Forecast result</p>
+            <p class="visitor-count" id="result">—</p>
+            <p class="forecast-note">Adjusted forecast</p>
         </div>
     </div>
 
+    <!-- BACK -->
     <div class="widget manual-link">
         <div class="content-box link-box">
             <a href="{{ url_for('home') }}" class="manual-button">Dashboard</a>
@@ -84,50 +65,56 @@
 </div>
 
 <script>
-const sliders = ['rain', 'weather', 'event', 'promo', 'holidays', 'weekday', 'month'];
-
-sliders.forEach(id => {
+/* Sync sliders & inputs */
+function sync(id) {
     const range = document.getElementById(id);
-    const num = document.getElementById(id + '-num');
+    const num = document.getElementById(id + "-num");
+    range.addEventListener("input", () => num.value = range.value);
+    num.addEventListener("input", () => range.value = num.value);
+}
+sync("rain");
+sync("temp");
 
-    range.addEventListener('input', () => num.value = range.value);
-    num.addEventListener('input', () => range.value = num.value);
-});
-</script>
+/* Default date = today */
+document.getElementById("date").value =
+    new Date().toISOString().split("T")[0];
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-const ctx = document.getElementById('forecastChart').getContext('2d');
-new Chart(ctx, {
-    type: 'line',
+/* Chart */
+const ctx = document.getElementById("comparisonChart");
+const chart = new Chart(ctx, {
+    type: "bar",
     data: {
-        labels: [0,1,2,3,4,5,6,7,8],
+        labels: ["Prediction"],
         datasets: [
-            { label: 'Forecasted', data: [450,330,500,420,200,300,400,180,0], borderColor: '#f0a0ff', backgroundColor: 'transparent', tension: 0.3 },
-            { label: 'Custom forecasting', data: [0,600,150,430,300,350,300,200,0], borderColor: '#a080ff', backgroundColor: 'transparent', tension: 0.3 }
+            {
+                label: "Normal prediction",
+                data: [0],
+            },
+            {
+                label: "Adjusted (slider)",
+                data: [0],
+            }
         ]
     },
     options: {
-        plugins: { legend: { labels: { color: '#f0f0f0' } } },
+        responsive: true,
+        plugins: {
+            legend: { labels: { color: "#f0f0f0" } }
+        },
         scales: {
-            x: { ticks: { color: '#a0a0a0' }, grid: { color: '#3a3a3a' }},
-            y: { ticks: { color: '#a0a0a0' }, grid: { color: '#3a3a3a' }}
+            x: { ticks: { color: "#a0a0a0" } },
+            y: { ticks: { color: "#a0a0a0" } }
         }
     }
 });
-</script>
 
-<script>
+/* Calculate */
 document.querySelector(".confirm-button").addEventListener("click", () => {
 
     const payload = {
+        date: document.getElementById("date").value,
         rain: parseFloat(document.getElementById("rain").value),
-        weather: parseFloat(document.getElementById("weather").value),
-        event: parseFloat(document.getElementById("event").value),
-        promo: parseFloat(document.getElementById("promo").value),
-        holidays: parseFloat(document.getElementById("holidays").value),
-        weekday: parseInt(document.getElementById("weekday").value),
-        month: parseInt(document.getElementById("month").value)
+        temperature: parseFloat(document.getElementById("temp").value)
     };
 
     fetch("/save_variables", {
@@ -135,8 +122,20 @@ document.querySelector(".confirm-button").addEventListener("click", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
     })
-    .then(response => response.json())
-    .then(data => console.log("Server:", data));
+    .then(res => res.json())
+    .then(data => {
+
+        /* TEMP MOCK VALUES – backend will replace */
+        const normal = 6500;
+        const adjusted = 7200;
+
+        document.getElementById("result").textContent =
+            adjusted.toLocaleString() + " visitors";
+
+        chart.data.datasets[0].data = [normal];
+        chart.data.datasets[1].data = [adjusted];
+        chart.update();
+    });
 });
 </script>
 
