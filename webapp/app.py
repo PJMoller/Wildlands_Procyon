@@ -75,16 +75,12 @@ def login_submit():
 df = None
 
 def load_df():
-    """
-    Converts NEW prediction CSV format into OLD dashboard format
-    """
     raw = pd.read_csv(latest_file, low_memory=False)
 
     raw["date"] = pd.to_datetime(raw["date"], errors="coerce")
     raw = raw.dropna(subset=["date"])
     raw["date"] = raw["date"].dt.normalize()
 
-    # Pivot ticket types
     ticket_pivot = (
         raw
         .pivot_table(
@@ -97,13 +93,11 @@ def load_df():
         .reset_index()
     )
 
-    # Rename ticket columns
     ticket_pivot.columns = [
         "date" if c == "date" else f"ticket_{c}"
         for c in ticket_pivot.columns
     ]
 
-    # Total visitors per day
     ticket_cols = [c for c in ticket_pivot.columns if c.startswith("ticket_")]
     ticket_pivot["total_visitors"] = ticket_pivot[ticket_cols].sum(axis=1)
 
@@ -214,15 +208,38 @@ def day_tickets():
     })
 
 
-@app.route("/api/upload-status")
-def upload_status():
-    files = [
-        f for f in os.listdir(UPLOAD_FOLDER)
-        if os.path.isfile(os.path.join(UPLOAD_FOLDER, f))
-    ]
-    return jsonify({"files": files})
+# ------------------ SLIDER PREDICTION (NEW, SAFE) ------------------
+@app.route("/api/slider-predict", methods=["POST"])
+def slider_predict():
+    data = request.json
+
+    date = pd.to_datetime(data["date"]).normalize()
+    rain = float(data["rain"])
+    temperature = float(data["temperature"])
+
+    df_local = get_df()
+    row = df_local[df_local["date"] == date]
+
+    if row.empty:
+        return jsonify({"error": "No prediction for this date"}), 404
+
+    baseline = int(row["total_visitors"].iloc[0])
+
+    temp_effect = 1 + (temperature - 15) * 0.015
+    rain_effect = 1 - min(rain * 0.02, 0.6)
+
+    multiplier = max(0.4, temp_effect * rain_effect)
+    adjusted = int(round(baseline * multiplier))
+
+    return jsonify({
+        "date": date.strftime("%Y-%m-%d"),
+        "baseline": baseline,
+        "adjusted": adjusted,
+        "multiplier": round(multiplier, 3)
+    })
 
 
+# ------------------ UPLOAD ------------------
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
