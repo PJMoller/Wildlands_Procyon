@@ -14,25 +14,64 @@
         <h3>Adjust Variables</h3>
         <div class="content-box">
 
+            <!-- DATE -->
             <div class="variable">
-                <label for="date">Date</label>
+                <label>Date</label>
                 <input type="date" id="date">
             </div>
 
+            <!-- RAIN MORNING -->
             <div class="variable">
                 <div class="variable-top">
-                    <label for="rain">Rainfall</label>
-                    <input type="number" id="rain-num" value="0" step="0.5" class="variable-value">
+                    <label>Rain Morning</label>
+                    <input type="number" id="rain_morning-num" value="0" step="0.5" class="variable-value">
                     <span>mm</span>
                 </div>
                 <div class="variable-slider">
-                    <input type="range" id="rain" min="0" max="50" step="0.5" value="0">
+                    <input type="range" id="rain_morning" min="0" max="50" step="0.5" value="0">
                 </div>
             </div>
 
+            <!-- RAIN AFTERNOON -->
             <div class="variable">
                 <div class="variable-top">
-                    <label for="temp">Temperature</label>
+                    <label>Rain Afternoon</label>
+                    <input type="number" id="rain_afternoon-num" value="0" step="0.5" class="variable-value">
+                    <span>mm</span>
+                </div>
+                <div class="variable-slider">
+                    <input type="range" id="rain_afternoon" min="0" max="50" step="0.5" value="0">
+                </div>
+            </div>
+
+            <!-- PRECIP MORNING -->
+            <div class="variable">
+                <div class="variable-top">
+                    <label>Precip Morning</label>
+                    <input type="number" id="precip_morning-num" value="0" step="0.5" class="variable-value">
+                    <span>mm</span>
+                </div>
+                <div class="variable-slider">
+                    <input type="range" id="precip_morning" min="0" max="50" step="0.5" value="0">
+                </div>
+            </div>
+
+            <!-- PRECIP AFTERNOON -->
+            <div class="variable">
+                <div class="variable-top">
+                    <label>Precip Afternoon</label>
+                    <input type="number" id="precip_afternoon-num" value="0" step="0.5" class="variable-value">
+                    <span>mm</span>
+                </div>
+                <div class="variable-slider">
+                    <input type="range" id="precip_afternoon" min="0" max="50" step="0.5" value="0">
+                </div>
+            </div>
+
+            <!-- TEMPERATURE -->
+            <div class="variable">
+                <div class="variable-top">
+                    <label>Temperature</label>
                     <input type="number" id="temp-num" value="15" class="variable-value">
                     <span>°C</span>
                 </div>
@@ -74,8 +113,8 @@ function sync(id) {
     range.addEventListener("input", () => num.value = range.value);
     num.addEventListener("input", () => range.value = num.value);
 }
-sync("rain");
-sync("temp");
+
+["rain_morning", "rain_afternoon", "precip_morning", "precip_afternoon", "temp"].forEach(sync);
 
 document.getElementById("date").value =
     new Date().toISOString().split("T")[0];
@@ -87,34 +126,31 @@ const chart = new Chart(
         data: {
             labels: ["Visitors"],
             datasets: [
-                {
-                    label: "Normal prediction",
-                    data: [0]
-                },
-                {
-                    label: "Adjusted (slider)",
-                    data: [0]
-                }
+                { label: "Normal prediction", data: [0] },
+                { label: "Adjusted (slider)", data: [0] }
             ]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: { labels: { color: "#f0f0f0" } }
-            }
         }
     }
 );
 
 document.querySelector(".confirm-button").addEventListener("click", () => {
+    const payload = {
+        date: document.getElementById("date").value,
+        temperature: document.getElementById("temp").value,
+
+        rain_morning: document.getElementById("rain_morning").value,
+        rain_afternoon: document.getElementById("rain_afternoon").value,
+
+        precip_morning: document.getElementById("precip_morning").value,
+        precip_afternoon: document.getElementById("precip_afternoon").value
+    };
+
+    console.log("Sending payload:", payload);
+
     fetch("/api/slider-predict", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            date: document.getElementById("date").value,
-            rain: document.getElementById("rain").value,
-            temperature: document.getElementById("temp").value
-        })
+        body: JSON.stringify(payload)
     })
     .then(res => res.json())
     .then(data => {
