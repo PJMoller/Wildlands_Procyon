@@ -59,7 +59,6 @@ def _compute_extreme_multipliers(processed_df: pd.DataFrame) -> dict:
     if baseline_avg == 0: baseline_avg = 1.0
 
     # 2. Christmas Peak Intensity (Dec 27-30) - The REAL Peak
-    # Filter for post-Covid years (2022+) to avoid zero-days dragging it down
     recent_df = processed_df[processed_df['date'].dt.year >= 2022]
     
     xmas_data = recent_df[
@@ -71,10 +70,6 @@ def _compute_extreme_multipliers(processed_df: pd.DataFrame) -> dict:
         xmas_avg = xmas_data[xmas_data['ticket_num'] > 0].groupby('date')['ticket_num'].sum().mean()
     else:
         xmas_avg = baseline_avg * 3.0 # Fallback if no recent data
-
-    print(f"DEBUG: Baseline (Median) = {baseline_avg:.1f}")
-    print(f"DEBUG: Peak Xmas Avg (Dec 27-30) = {xmas_avg:.1f}")
-    print(f"DEBUG: Calculated Multiplier = {(xmas_avg / baseline_avg):.2f}x")
 
     # 3. Low Season Depth (Jan, Feb, Nov)
     low_data = processed_df[processed_df['date'].dt.month.isin([1, 2, 11])]
@@ -166,7 +161,7 @@ def _apply_extreme_shape_injection(pred: float, current_date: datetime, multipli
 
 
 # =============================================================================
-# STANDARD UTILS (Unchanged)
+# STANDARD UTILS
 # =============================================================================
 
 def get_openmeteo_for_future(days=16):
@@ -408,14 +403,6 @@ def predict_next_365_days(forecast_days: int = 365, openmeteo_days: int = 14, ma
         trend_ratio = manual_growth_override
     else:
         trend_ratio = np.clip(trend_ratio, 0.70, 1.30)
-        
-    hist_annual_sum = sum(raw_target_doy_map.values())
-    projected_annual_sales = hist_annual_sum * trend_ratio
-
-    print(f"\n=== DYNAMIC TREND PROJECTION ===")
-    print(f"Historical Annual Baseline: {int(hist_annual_sum):,}")
-    print(f"Calculated Trend Ratio:     {trend_ratio:.3f}")
-    print(f"Projected Annual Target:    {int(projected_annual_sales):,}")
 
     target_doy_map = {k: v * trend_ratio for k, v in raw_target_doy_map.items()}
     target_family_map = {k: v * trend_ratio for k, v in raw_target_family_map.items()}
@@ -552,7 +539,6 @@ def predict_next_365_days(forecast_days: int = 365, openmeteo_days: int = 14, ma
             day_pred = day_pred * ratio # Update current sum
 
         # 2. APPLY SHAPE INJECTION TO THE GLOBAL TOTAL
-        # This fixes the bug where we injected "Park Total" into "Single Ticket"
         final_total = _apply_extreme_shape_injection(day_pred, current_date, extreme_multipliers)
         
         # Distribute the injection proportionally back to tickets
@@ -561,7 +547,7 @@ def predict_next_365_days(forecast_days: int = 365, openmeteo_days: int = 14, ma
             scaled = [(t, f, v * global_ratio, m) for t, f, v, m in scaled]
 
         # Force Closed Days
-        if month == 1 and day == 1:
+        if (month == 1 and day == 1) or (month == 12 and day == 31):
             scaled = [(t, f, 0.0, m) for t, f, v, m in scaled]
 
         if is_weekend:
@@ -600,9 +586,9 @@ def predict_next_365_days(forecast_days: int = 365, openmeteo_days: int = 14, ma
     
     print("\n" + "="*50)
     print(f"FINAL FORECAST STATS")
-    print(f"Total Predicted: {int(total_sales):,} (vs Proj. Target: {int(projected_annual_sales):,})")
+    print(f"Total Predicted: {int(total_sales):,}")
     xmas = forecast_df[(forecast_df.date.dt.month == 12) & (forecast_df.date.dt.day.between(27, 30))]
-    print(f"Real Peak Avg (Dec 27-30): {int(xmas.groupby('date')['predicted_sales'].sum().mean()):,}")
+    print(f"Peak Avg (Dec 27-30): {int(xmas.groupby('date')['predicted_sales'].sum().mean()):,}")
 
     out_path = PREDICTIONS_DIR / f"forecast_365days_{datetime.now().strftime('%Y%m%d_%H%M')}.csv"
     forecast_df.to_csv(out_path, index=False)
