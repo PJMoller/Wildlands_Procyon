@@ -4,13 +4,24 @@ import os
 from werkzeug.utils import secure_filename
 import sqlite3
 import hashlib
+from paths import PREDICTIONS_DIR
+
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+APP_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.path.join(APP_DIR, "database.db")
+
+UPLOAD_FOLDER = os.path.join(PROJECT_ROOT, "data", "upload")
+ALLOWED_EXTENSIONS = {"csv", "xlsx", "xls"}
+
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+CSV_PATH = os.path.join(PROJECT_ROOT, "data", "predictions", "app_predictions_365days.csv")
 
 app = Flask(__name__)
 
 app.secret_key = os.environ.get("SECRET_KEY", "fallback_dev_key")
 
-APP_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(APP_DIR, "database.db")
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)
@@ -64,17 +75,10 @@ def save_variables():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 400
 
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-UPLOAD_FOLDER = os.path.join(PROJECT_ROOT, "data", "upload")
-ALLOWED_EXTENSIONS = {"csv", "xlsx", "xls"}
-
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
-CSV_PATH = os.path.join(PROJECT_ROOT, "data", "predictions", "app_predictions_365days.csv")
 
 def load_df():
     df = pd.read_csv(CSV_PATH, low_memory=False)
