@@ -466,11 +466,25 @@ def predict_next_365_days(forecast_days: int = 365, openmeteo_days: int = 14, ma
         temperature = _safe_float(w_row.get("temperature", 10.0))
         rain = _safe_float(w_row.get("rain_morning", 0)) + _safe_float(w_row.get("rain_afternoon", 0))
         
+        rain_morning = _safe_float(w_row.get("rain_morning", 0))
+        rain_afternoon = _safe_float(w_row.get("rain_afternoon", 0))
+        precip_morning = _safe_float(w_row.get("precip_morning", 0))
+        precip_afternoon = _safe_float(w_row.get("precip_afternoon", 0))
+        precipitation = precip_morning + precip_afternoon
+
         # Holiday/Events
         days_until_hol, days_since_hol = _compute_holiday_proximity(current_date, holiday_dates_sorted)
         hol_feats = holiday_lookup.get(current_date, {})
         camp_feats = camp_lookup.get((year, week), {})
         evt_feats = events_lookup.get(current_date, {})
+
+        # Extract active event names
+        active_events = [
+            evt_col.replace("event_", "") 
+            for evt_col, evt_val in evt_feats.items() 
+            if evt_val > 0 and evt_col.startswith("event_")
+        ]
+        event_name = ", ".join(active_events) if active_events else "no_event"
 
         # Predict
         per_ticket = []
@@ -561,12 +575,22 @@ def predict_next_365_days(forecast_days: int = 365, openmeteo_days: int = 14, ma
             ratio = np.clip(day_target / day_pred, lo, hi)
             scaled = [(t, f, v * ratio, m) for t, f, v, m in scaled]
 
-        # Save
         for tname, tfam, val, mused in scaled:
             all_rows.append({
-                "date": current_date, "ticket_name": tname, "ticket_family": tfam,
-                "predicted_sales": int(round(val)), "model_used": mused,
-                "year": year, "month": month, "day": day
+                "date": current_date, 
+                "ticket_name": tname, 
+                "ticket_family": tfam,
+                "predicted_sales": int(round(val)), 
+                "event_name": event_name,
+                "model_used": mused,
+                "year": year, "month": month, "day": day,
+                "temperature": round(temperature, 1),
+                "total_rain": round(rain, 1),
+                "total_precipitation": round(precipitation, 1),
+                "rain_morning": round(rain_morning, 1),
+                "rain_afternoon": round(rain_afternoon, 1),
+                "precipitation_morning": round(precip_morning, 1),
+                "precipitation_afternoon": round(precip_afternoon, 1),
             })
             
         if step % 30 == 0:
