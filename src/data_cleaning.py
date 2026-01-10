@@ -27,9 +27,10 @@ def process_data():
         "NumberOfUsedEntrances",
     }
 
-    if not expected_cols.issubset(visitor_og_df.columns):
-        print("DataFrame 0 is missing required columns")
-        return
+    missing = expected_cols - set(visitor_og_df.columns)
+    if missing:
+        raise ValueError(f"Visitor data missing required columns: {missing}")
+
 
 
     # --- Data Loading ---

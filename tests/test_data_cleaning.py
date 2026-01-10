@@ -1,5 +1,6 @@
 import unittest
 from unittest.mock import patch
+from flask import ctx
 import pandas as pd
 import sys
 import os
@@ -16,7 +17,7 @@ class TestDataProcessing(unittest.TestCase):
     def setUp(self):
         # Common mock data for all tests
         self.visitor_data = pd.DataFrame({
-            "AccessGroupId": [1, 2],
+            "SubgroupId": [1, 2],
             "Description": ["adult", "child"],
             "Date": ["2023-01-01", "2023-01-02"],
             "NumberOfUsedEntrances": [100, 150],
@@ -123,7 +124,11 @@ class TestDataProcessing(unittest.TestCase):
             output = mock_stdout.getvalue()
             self.assertIn("DataFrame 0 is empty", output)
 
-    def test_process_data_incorrect_columns(self):
+            
+    @patch("pandas.read_csv")
+    @patch("pandas.read_excel")
+    @patch("pandas.DataFrame.to_csv")
+    def test_process_data_incorrect_columns(self, mock_to_csv, mock_read_excel, mock_read_csv):
         incorrect_visitor_data = pd.DataFrame({
             "WrongColumn1": [1, 2],
             "WrongColumn2": ["adult", "child"]
@@ -137,20 +142,27 @@ class TestDataProcessing(unittest.TestCase):
             "hour": [10, 11]
         })
 
-        with patch("pandas.read_csv", return_value=incorrect_visitor_data), \
-             patch("pandas.read_excel", side_effect=[valid_weather_data,
-                                                     self.holiday_data,
-                                                     self.camp_data,
-                                                     self.recurring_data,
-                                                     self.ticketfam_data]), \
-             patch("pandas.DataFrame.to_csv") as mock_to_csv, \
-             patch('sys.stdout', new_callable=io.StringIO) as mock_stdout:
+        # Mock inputs
+        mock_read_csv.return_value = incorrect_visitor_data
+        mock_read_excel.side_effect = [
+            self.weather_xlsx,
+            self.holiday_data,
+            self.camp_data,
+            self.recurring_data,
+            self.ticketfam_data
+        ]
 
+        # Expect ValueError
+        with self.assertRaises(ValueError) as ctx:
             process_data()
-            mock_to_csv.assert_not_called()
-            output = mock_stdout.getvalue()
-            self.assertIn("DataFrame 0 is missing required columns", output)
 
+        self.assertIn(
+            "Visitor data missing required columns",
+            str(ctx.exception)
+        )
+
+        # Want to make sure nothing is saved
+        mock_to_csv.assert_not_called()
 
 if __name__ == "__main__":
     unittest.main()
