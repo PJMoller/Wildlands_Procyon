@@ -8,8 +8,12 @@ from paths import PREDICTIONS_DIR
 
 # ------------------ PATH FIX FOR ML ------------------
 import sys
+# Ensure we can import from the directory where the prediction script lives
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from src.single_day_predict import predict_single_day
+
+# Import the updated function (ensure the file is named single_day_predict.py or similar)
+# NOTE: The function name below must match the one in your ML script (e.g., predict_single_day_manual)
+from src.single_day_predict import predict_single_day 
 
 # ------------------ PATHS ------------------
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -67,7 +71,11 @@ def login_submit():
 df = None
 
 def load_df():
+    # Load the latest prediction file to show baseline data on dashboard
     files = [f for f in PREDICTIONS_DIR.iterdir() if f.is_file()]
+    if not files:
+        return pd.DataFrame(columns=["date", "total_visitors"])
+        
     latest_file = max(files, key=lambda f: f.stat().st_mtime)
 
     raw = pd.read_csv(latest_file, low_memory=False)
@@ -85,9 +93,10 @@ def load_df():
     ticket_cols = [c for c in pivot.columns if c.startswith("ticket_")]
     pivot["total_visitors"] = pivot[ticket_cols].sum(axis=1)
 
-    # Merge weather back in (temperature & rain)
-    weather_cols = raw.groupby("date")[["temperature", "total_rain"]].mean().reset_index()
-    pivot = pivot.merge(weather_cols, on="date", how="left")
+    # Merge weather back in (temperature & rain) if available in raw file
+    if "temperature" in raw.columns and "total_rain" in raw.columns:
+        weather_cols = raw.groupby("date")[["temperature", "total_rain"]].mean().reset_index()
+        pivot = pivot.merge(weather_cols, on="date", how="left")
 
     return pivot.sort_values("date")
 
@@ -144,24 +153,24 @@ def visitors():
 @app.route("/api/today")
 def today():
     df_local = get_df()
-    today = pd.Timestamp.today().normalize()
-    tomorrow = today + pd.Timedelta(days=1)
+    today_date = pd.Timestamp.today().normalize()
+    tomorrow_date = today_date + pd.Timedelta(days=1)
 
     def get_info(d):
         r = df_local[df_local["date"] == d]
         if r.empty:
-            return {"visitors": 0, "temperature": None, "rain": None}
+            return {"visitors": 0, "temperature": None, "rain_morning": None}
 
         row = r.iloc[0]
         return {
             "visitors": int(row["total_visitors"]),
             "temperature": round(float(row.get("temperature", 0)), 1),
-            "rain": round(float(row.get("total_rain", 0)), 1)
+            "rain_morning": round(float(row.get("total_rain", 0)), 1)
         }
 
     return jsonify({
-        "today": get_info(today),
-        "tomorrow": get_info(tomorrow)
+        "today": get_info(today_date),
+        "tomorrow": get_info(tomorrow_date)
     })
 
 @app.route("/api/day-tickets")
@@ -194,27 +203,68 @@ def upload_file():
         file.save(os.path.join(UPLOAD_FOLDER, secure_filename(file.filename)))
     return redirect(url_for("home"))
 
-# ------------------ SLIDER ML ------------------
+# ------------------ SLIDER ML (FIXED) ------------------
 @app.route("/api/slider-predict", methods=["POST"])
 def slider_predict():
-    payload = request.get_json()
-    date = pd.to_datetime(payload["date"]).normalize()
+    """
+    Receives manual inputs. 
+    Fix: Handles both explicit morning/afternoon values AND generic 'rain' totals.
+    """
+    try:
+        payload = request.get_json()
+        date_str = payload.get("date")
+        
+        # 1. Get Baseline
+        date_obj = pd.to_datetime(date_str).normalize()
+        df_local = get_df()
+        base_row = df_local[df_local["date"] == date_obj]
+        baseline = int(base_row["total_visitors"].iloc[0]) if not base_row.empty else 0
 
-    df_local = get_df()
-    base_row = df_local[df_local["date"] == date]
-    baseline = int(base_row["total_visitors"].iloc[0]) if not base_row.empty else 0
+        # 2. Smart Weather Extraction (The Fix)
+        # If frontend sends 'rain_morning', use it. 
+        # If not, check for 'rain' (total) and split it 50/50.
+        
+        # --- Rain Handling ---
+        if "rain_morning" in payload:
+            r_morning = float(payload.get("rain_morning", 0.0))
+            r_afternoon = float(payload.get("rain_afternoon", 0.0))
+        else:
+            # Fallback: User sent total "rain"
+            total_rain = float(payload.get("rain", 0.0))
+            r_morning = total_rain / 2.0
+            r_afternoon = total_rain / 2.0
 
-    ml_df = predict_single_day(
-        date=date,
-        temperature=float(payload["temperature"]),
-        rain=float(payload["rain"])
-    )
-    adjusted = int(ml_df.select_dtypes("number").sum().sum())
+        # --- Precipitation Handling ---
+        if "precip_morning" in payload:
+            p_morning = float(payload.get("precip_morning", 0.0))
+            p_afternoon = float(payload.get("precip_afternoon", 0.0))
+        else:
+            # Fallback: User sent total "precipitation"
+            total_precip = float(payload.get("precipitation", 0.0))
+            p_morning = total_precip / 2.0
+            p_afternoon = total_precip / 2.0
 
-    return jsonify({
-        "baseline": baseline,
-        "adjusted": adjusted
-    })
+        # 3. Run ML Prediction (Using your preferred names)
+        adjusted_total = predict_single_day(
+            date=date_str,  # Kept as 'date' per your instruction
+            temperature=float(payload.get("temperature", 15.0)),
+            rain_morning=r_morning,
+            rain_afternoon=r_afternoon,
+            precip_morning=p_morning,
+            precip_afternoon=p_afternoon,
+            event_name=payload.get("event_name"),     
+            holiday_name=payload.get("holiday_name"), 
+            holiday_intensity=int(payload.get("holiday_intensity", 0)) 
+        )
+
+        return jsonify({
+            "baseline": baseline,
+            "adjusted": adjusted_total
+        })
+
+    except Exception as e:
+        print(f"Error in slider_predict: {e}")
+        return jsonify({"error": str(e)}), 500
 
 # ------------------ RUN ------------------
 if __name__ == "__main__":
