@@ -6,24 +6,24 @@ import sqlite3
 import hashlib
 from paths import PREDICTIONS_DIR
 
+# ------------------ PATH FIX FOR ML ------------------
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from src.single_day_predict import predict_single_day
+
+# ------------------ PATHS ------------------
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(APP_DIR, "database.db")
-
 UPLOAD_FOLDER = os.path.join(PROJECT_ROOT, "data", "upload")
 ALLOWED_EXTENSIONS = {"csv", "xlsx", "xls"}
-
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# Latest prediction file
-files = [f for f in PREDICTIONS_DIR.iterdir() if f.is_file()]
-latest_file = max(files, key=lambda f: f.stat().st_mtime)
-
+# ------------------ FLASK ------------------
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", "fallback_dev_key")
+app.secret_key = "dev-key"
 
-
-# ------------------ DB ------------------
+# ------------------ DATABASE ------------------
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
@@ -39,70 +39,53 @@ def init_db():
 
 init_db()
 
-
 def check_user(username, password):
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
     hashed = hashlib.sha256(password.encode()).hexdigest()
     cur.execute(
-        "SELECT * FROM users WHERE username = ? AND password = ?",
+        "SELECT * FROM users WHERE username=? AND password=?",
         (username, hashed)
     )
     user = cur.fetchone()
     conn.close()
     return user
 
-
 # ------------------ AUTH ------------------
 @app.route("/login", methods=["GET"])
 def login_page():
     return render_template("Loginpage.html")
 
-
 @app.route("/login", methods=["POST"])
 def login_submit():
-    username = request.form.get("username")
-    password = request.form.get("password")
-
-    if check_user(username, password):
-        session["user"] = username
+    if check_user(request.form["username"], request.form["password"]):
+        session["user"] = request.form["username"]
         return redirect(url_for("home"))
+    return render_template("Loginpage.html", error="Incorrect credentials")
 
-    return render_template("Loginpage.html", error="Incorrect username or password.")
-
-
-# ------------------ DATA LOADING ------------------
+# ------------------ LOAD DASHBOARD DATA (UNCHANGED) ------------------
 df = None
 
 def load_df():
+    files = [f for f in PREDICTIONS_DIR.iterdir() if f.is_file()]
+    latest_file = max(files, key=lambda f: f.stat().st_mtime)
+
     raw = pd.read_csv(latest_file, low_memory=False)
+    raw["date"] = pd.to_datetime(raw["date"]).dt.normalize()
 
-    raw["date"] = pd.to_datetime(raw["date"], errors="coerce")
-    raw = raw.dropna(subset=["date"])
-    raw["date"] = raw["date"].dt.normalize()
+    pivot = raw.pivot_table(
+        index="date",
+        columns="ticket_name",
+        values="predicted_sales",
+        aggfunc="sum",
+        fill_value=0
+    ).reset_index()
 
-    ticket_pivot = (
-        raw
-        .pivot_table(
-            index="date",
-            columns="ticket_name",
-            values="predicted_sales",
-            aggfunc="sum",
-            fill_value=0
-        )
-        .reset_index()
-    )
+    pivot.columns = ["date" if c == "date" else f"ticket_{c}" for c in pivot.columns]
+    ticket_cols = [c for c in pivot.columns if c.startswith("ticket_")]
+    pivot["total_visitors"] = pivot[ticket_cols].sum(axis=1)
 
-    ticket_pivot.columns = [
-        "date" if c == "date" else f"ticket_{c}"
-        for c in ticket_pivot.columns
-    ]
-
-    ticket_cols = [c for c in ticket_pivot.columns if c.startswith("ticket_")]
-    ticket_pivot["total_visitors"] = ticket_pivot[ticket_cols].sum(axis=1)
-
-    return ticket_pivot.sort_values("date")
-
+    return pivot.sort_values("date")
 
 def get_df():
     global df
@@ -110,14 +93,12 @@ def get_df():
         df = load_df()
     return df
 
-
-# ------------------ ROUTES ------------------
+# ------------------ PAGES ------------------
 @app.route("/")
 def home():
     if "user" not in session:
         return redirect(url_for("login_page"))
     return render_template("Dashboard.html")
-
 
 @app.route("/slider")
 def slider():
@@ -125,142 +106,108 @@ def slider():
         return redirect(url_for("login_page"))
     return render_template("Slider.html")
 
-
+# ------------------ DASHBOARD APIS (ORIGINAL, RESTORED) ------------------
 @app.route("/api/visitors")
-def get_visitors():
-    range_type = request.args.get("range", "week")
-    date_str = request.args.get("date")
-
+def visitors():
     df_local = get_df()
 
-    try:
-        selected_date = pd.to_datetime(date_str).normalize()
-    except:
-        selected_date = df_local["date"].max()
-
-    if range_type == "week":
-        start = selected_date - pd.Timedelta(days=selected_date.weekday())
-        end = start + pd.Timedelta(days=6)
-    elif range_type == "month":
-        start = selected_date.replace(day=1)
-        end = (start + pd.offsets.MonthEnd(1)).normalize()
-    elif range_type == "year":
-        start = selected_date.replace(month=1, day=1)
-        end = selected_date.replace(month=12, day=31)
+    # Parse query parameters
+    range_param = request.args.get("range", "week")  # week, month, year
+    start_date_str = request.args.get("date")  # date to base the range on
+    if start_date_str:
+        start_date = pd.to_datetime(start_date_str).normalize()
     else:
-        start = end = selected_date
+        start_date = pd.Timestamp.today().normalize()
 
-    data = df_local[(df_local["date"] >= start) & (df_local["date"] <= end)]
+    # Determine end date based on range
+    if range_param == "week":
+        end_date = start_date + pd.Timedelta(days=6)
+    elif range_param == "month":
+        end_date = (start_date + pd.DateOffset(months=1)) - pd.Timedelta(days=1)
+    elif range_param == "year":
+        end_date = (start_date + pd.DateOffset(years=1)) - pd.Timedelta(days=1)
+    else:
+        end_date = start_date + pd.Timedelta(days=6)  # default to week
+
+    # Filter dataframe for the selected range
+    mask = (df_local["date"] >= start_date) & (df_local["date"] <= end_date)
+    df_filtered = df_local.loc[mask]
 
     return jsonify({
-        "dates": data["date"].dt.strftime("%Y-%m-%d").tolist(),
-        "visitors": data["total_visitors"].tolist()
+        "dates": df_filtered["date"].dt.strftime("%Y-%m-%d").tolist(),
+        "visitors": df_filtered["total_visitors"].tolist()
     })
 
 
 @app.route("/api/today")
-def today_info():
+def today():
+    df_local = get_df()
     today = pd.Timestamp.today().normalize()
     tomorrow = today + pd.Timedelta(days=1)
 
-    df_local = get_df()
-
-    def visitors_for(d):
-        row = df_local[df_local["date"] == d]
-        return int(row["total_visitors"].iloc[0]) if not row.empty else 0
+    def v(d):
+        r = df_local[df_local["date"] == d]
+        return int(r["total_visitors"].iloc[0]) if not r.empty else 0
 
     return jsonify({
-        "today": {
-            "date": today.strftime("%A, %b %d"),
-            "visitors": visitors_for(today)
-        },
-        "tomorrow": {
-            "date": tomorrow.strftime("%A, %b %d"),
-            "visitors": visitors_for(tomorrow)
-        }
+        "today": {"visitors": v(today)},
+        "tomorrow": {"visitors": v(tomorrow)}
     })
-
 
 @app.route("/api/day-tickets")
 def day_tickets():
-    date_str = request.args.get("date")
-    selected_date = pd.to_datetime(date_str).normalize()
-
-    df_local = get_df()
-    row = df_local[df_local["date"] == selected_date]
+    date = pd.to_datetime(request.args["date"]).normalize()
+    row = get_df()[lambda x: x["date"] == date]
 
     if row.empty:
-        return jsonify({"error": "No data"}), 404
+        return jsonify({})
 
     row = row.iloc[0]
-    ticket_columns = [c for c in df_local.columns if c.startswith("ticket_")]
-
     tickets = {
         c.replace("ticket_", ""): int(row[c])
-        for c in ticket_columns
-        if row[c] > 0
+        for c in row.index if c.startswith("ticket_")
     }
 
     return jsonify({
-        "date": selected_date.strftime("%Y-%m-%d"),
         "tickets": tickets,
         "total_visitors": int(row["total_visitors"])
     })
 
-
-# ------------------ SLIDER PREDICTION (NEW, SAFE) ------------------
-@app.route("/api/slider-predict", methods=["POST"])
-def slider_predict():
-    data = request.json
-
-    date = pd.to_datetime(data["date"]).normalize()
-    rain = float(data["rain"])
-    temperature = float(data["temperature"])
-
-    df_local = get_df()
-    row = df_local[df_local["date"] == date]
-
-    if row.empty:
-        return jsonify({"error": "No prediction for this date"}), 404
-
-    baseline = int(row["total_visitors"].iloc[0])
-
-    temp_effect = 1 + (temperature - 15) * 0.015
-    rain_effect = 1 - min(rain * 0.02, 0.6)
-
-    multiplier = max(0.4, temp_effect * rain_effect)
-    adjusted = int(round(baseline * multiplier))
-
-    return jsonify({
-        "date": date.strftime("%Y-%m-%d"),
-        "baseline": baseline,
-        "adjusted": adjusted,
-        "multiplier": round(multiplier, 3)
-    })
-
-
-# ------------------ UPLOAD ------------------
+# ------------------ FILE UPLOAD ------------------
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
-
 @app.route("/upload", methods=["POST"])
 def upload_file():
-    if "file" not in request.files:
-        return "No file part", 400
-
-    file = request.files["file"]
-
-    if file.filename == "":
-        return "No selected file", 400
-
+    file = request.files.get("file")
     if file and allowed_file(file.filename):
-        filename = secure_filename(file.filename)
-        file.save(os.path.join(UPLOAD_FOLDER, filename))
-        return redirect(url_for("home"))
+        file.save(os.path.join(UPLOAD_FOLDER, secure_filename(file.filename)))
+    return redirect(url_for("home"))
 
-    return "Invalid file type", 400
+# ------------------ SLIDER (CORRECT BASELINE + ML ADJUSTMENT) ------------------
+@app.route("/api/slider-predict", methods=["POST"])
+def slider_predict():
+    payload = request.get_json()
+    date = pd.to_datetime(payload["date"]).normalize()
 
+    # Baseline = dashboard forecast
+    df_local = get_df()
+    base_row = df_local[df_local["date"] == date]
+    baseline = int(base_row["total_visitors"].iloc[0]) if not base_row.empty else 0
 
+    # Adjusted = ML
+    ml_df = predict_single_day(
+        date=date,
+        temperature=float(payload["temperature"]),
+        rain=float(payload["rain"])
+    )
+    adjusted = int(ml_df.select_dtypes("number").sum().sum())
+
+    return jsonify({
+        "baseline": baseline,
+        "adjusted": adjusted
+    })
+
+# ------------------ RUN ------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)

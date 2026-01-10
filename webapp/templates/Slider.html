@@ -80,21 +80,31 @@ sync("temp");
 document.getElementById("date").value =
     new Date().toISOString().split("T")[0];
 
-const ctx = document.getElementById("comparisonChart");
-const chart = new Chart(ctx, {
-    type: "bar",
-    data: {
-        labels: ["Prediction"],
-        datasets: [
-            { label: "Normal prediction", data: [0] },
-            { label: "Adjusted (slider)", data: [0] }
-        ]
-    },
-    options: {
-        responsive: true,
-        plugins: { legend: { labels: { color: "#f0f0f0" } } }
+const chart = new Chart(
+    document.getElementById("comparisonChart"),
+    {
+        type: "bar",
+        data: {
+            labels: ["Visitors"],
+            datasets: [
+                {
+                    label: "Normal prediction",
+                    data: [0]
+                },
+                {
+                    label: "Adjusted (slider)",
+                    data: [0]
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { labels: { color: "#f0f0f0" } }
+            }
+        }
     }
-});
+);
 
 document.querySelector(".confirm-button").addEventListener("click", () => {
     fetch("/api/slider-predict", {
