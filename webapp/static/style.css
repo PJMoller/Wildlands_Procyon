@@ -452,11 +452,33 @@ body.slider-page .manual-link {
     width: 60px;
 }
 
+.variable-top {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 15px;
+    width: 180px;  
+}
+
 .variable label {
-    width: 80px;
+    width: 100%;
     display: inline-block;
     font-weight: 600;
     color: #eaeaea;
+}
+
+.variable {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.variable-slider {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    width: 100%;
 }
 
 
