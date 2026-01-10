@@ -63,7 +63,7 @@ def login_submit():
         return redirect(url_for("home"))
     return render_template("Loginpage.html", error="Incorrect credentials")
 
-# ------------------ LOAD DASHBOARD DATA (UNCHANGED) ------------------
+# ------------------ LOAD DASHBOARD DATA ------------------
 df = None
 
 def load_df():
@@ -84,6 +84,10 @@ def load_df():
     pivot.columns = ["date" if c == "date" else f"ticket_{c}" for c in pivot.columns]
     ticket_cols = [c for c in pivot.columns if c.startswith("ticket_")]
     pivot["total_visitors"] = pivot[ticket_cols].sum(axis=1)
+
+    # Merge weather back in (temperature & rain)
+    weather_cols = raw.groupby("date")[["temperature", "total_rain"]].mean().reset_index()
+    pivot = pivot.merge(weather_cols, on="date", how="left")
 
     return pivot.sort_values("date")
 
@@ -106,20 +110,19 @@ def slider():
         return redirect(url_for("login_page"))
     return render_template("Slider.html")
 
-# ------------------ DASHBOARD APIS (ORIGINAL, RESTORED) ------------------
+# ------------------ DASHBOARD APIS ------------------
 @app.route("/api/visitors")
 def visitors():
     df_local = get_df()
 
-    # Parse query parameters
-    range_param = request.args.get("range", "week")  # week, month, year
-    start_date_str = request.args.get("date")  # date to base the range on
+    range_param = request.args.get("range", "week")
+    start_date_str = request.args.get("date")
+
     if start_date_str:
         start_date = pd.to_datetime(start_date_str).normalize()
     else:
         start_date = pd.Timestamp.today().normalize()
 
-    # Determine end date based on range
     if range_param == "week":
         end_date = start_date + pd.Timedelta(days=6)
     elif range_param == "month":
@@ -127,9 +130,8 @@ def visitors():
     elif range_param == "year":
         end_date = (start_date + pd.DateOffset(years=1)) - pd.Timedelta(days=1)
     else:
-        end_date = start_date + pd.Timedelta(days=6)  # default to week
+        end_date = start_date + pd.Timedelta(days=6)
 
-    # Filter dataframe for the selected range
     mask = (df_local["date"] >= start_date) & (df_local["date"] <= end_date)
     df_filtered = df_local.loc[mask]
 
@@ -138,20 +140,28 @@ def visitors():
         "visitors": df_filtered["total_visitors"].tolist()
     })
 
-
+# ✅ UPDATED: TODAY + TOMORROW WEATHER
 @app.route("/api/today")
 def today():
     df_local = get_df()
     today = pd.Timestamp.today().normalize()
     tomorrow = today + pd.Timedelta(days=1)
 
-    def v(d):
+    def get_info(d):
         r = df_local[df_local["date"] == d]
-        return int(r["total_visitors"].iloc[0]) if not r.empty else 0
+        if r.empty:
+            return {"visitors": 0, "temperature": None, "rain": None}
+
+        row = r.iloc[0]
+        return {
+            "visitors": int(row["total_visitors"]),
+            "temperature": round(float(row.get("temperature", 0)), 1),
+            "rain": round(float(row.get("total_rain", 0)), 1)
+        }
 
     return jsonify({
-        "today": {"visitors": v(today)},
-        "tomorrow": {"visitors": v(tomorrow)}
+        "today": get_info(today),
+        "tomorrow": get_info(tomorrow)
     })
 
 @app.route("/api/day-tickets")
@@ -184,18 +194,16 @@ def upload_file():
         file.save(os.path.join(UPLOAD_FOLDER, secure_filename(file.filename)))
     return redirect(url_for("home"))
 
-# ------------------ SLIDER (CORRECT BASELINE + ML ADJUSTMENT) ------------------
+# ------------------ SLIDER ML ------------------
 @app.route("/api/slider-predict", methods=["POST"])
 def slider_predict():
     payload = request.get_json()
     date = pd.to_datetime(payload["date"]).normalize()
 
-    # Baseline = dashboard forecast
     df_local = get_df()
     base_row = df_local[df_local["date"] == date]
     baseline = int(base_row["total_visitors"].iloc[0]) if not base_row.empty else 0
 
-    # Adjusted = ML
     ml_df = predict_single_day(
         date=date,
         temperature=float(payload["temperature"]),

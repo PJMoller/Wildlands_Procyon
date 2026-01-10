@@ -647,3 +647,9 @@ h2 {
     color: var(--text-secondary);
     text-align: center;
 }
+
+.weather-info {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin-top: 6px;
+}
