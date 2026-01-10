@@ -16,7 +16,11 @@ ALLOWED_EXTENSIONS = {"csv", "xlsx", "xls"}
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-CSV_PATH = os.path.join(PROJECT_ROOT, "data", "predictions", "app_predictions_365days.csv")
+# Get all the files in data/predictions
+files = [f for f in PREDICTIONS_DIR.iterdir() if f.is_file()]
+
+# Pick the file with the latest modification time
+latest_file = max(files, key=lambda f: f.stat().st_mtime)
 
 app = Flask(__name__)
 
@@ -81,7 +85,7 @@ def allowed_file(filename):
 
 
 def load_df():
-    df = pd.read_csv(CSV_PATH, low_memory=False)
+    df = pd.read_csv(latest_file, low_memory=False)
     df["date"] = pd.to_datetime(df["date"], errors="coerce")
     df = df.dropna(subset=["date"])
     df["date"] = df["date"].dt.normalize()
