@@ -10,22 +10,19 @@
 <body class="slider-page">
 <div class="container">
 
-    <!-- LEFT: VARIABLES -->
     <div class="widget current-day">
         <h3>Adjust Variables</h3>
         <div class="content-box">
 
-            <!-- DATE -->
             <div class="variable">
                 <label for="date">Date</label>
                 <input type="date" id="date">
             </div>
 
-            <!-- RAIN -->
             <div class="variable">
                 <div class="variable-top">
                     <label for="rain">Rainfall</label>
-                    <input type="number" id="rain-num" value="0" step="0.5" class="variable-value"> 
+                    <input type="number" id="rain-num" value="0" step="0.5" class="variable-value">
                     <span>mm</span>
                 </div>
                 <div class="variable-slider">
@@ -33,7 +30,6 @@
                 </div>
             </div>
 
-            <!-- TEMP -->
             <div class="variable">
                 <div class="variable-top">
                     <label for="temp">Temperature</label>
@@ -48,7 +44,6 @@
         </div>
     </div>
 
-    <!-- RIGHT: GRAPH -->
     <div class="widget events">
         <h3>Prediction Comparison</h3>
         <div class="content-box">
@@ -56,7 +51,6 @@
         </div>
     </div>
 
-    <!-- RESULT -->
     <div class="widget forecast">
         <div class="content-box forecast-box">
             <button class="confirm-button">Calculate</button>
@@ -65,7 +59,6 @@
         </div>
     </div>
 
-    <!-- BACK -->
     <div class="widget manual-link">
         <div class="content-box link-box">
             <a href="{{ url_for('home') }}" class="manual-button">Dashboard</a>
@@ -75,7 +68,6 @@
 </div>
 
 <script>
-/* Sync sliders & inputs */
 function sync(id) {
     const range = document.getElementById(id);
     const num = document.getElementById(id + "-num");
@@ -85,65 +77,52 @@ function sync(id) {
 sync("rain");
 sync("temp");
 
-/* Default date = today */
 document.getElementById("date").value =
     new Date().toISOString().split("T")[0];
 
-/* Chart */
-const ctx = document.getElementById("comparisonChart");
-const chart = new Chart(ctx, {
-    type: "bar",
-    data: {
-        labels: ["Prediction"],
-        datasets: [
-            {
-                label: "Normal prediction",
-                data: [0],
-            },
-            {
-                label: "Adjusted (slider)",
-                data: [0],
-            }
-        ]
-    },
-    options: {
-        responsive: true,
-        plugins: {
-            legend: { labels: { color: "#f0f0f0" } }
+const chart = new Chart(
+    document.getElementById("comparisonChart"),
+    {
+        type: "bar",
+        data: {
+            labels: ["Visitors"],
+            datasets: [
+                {
+                    label: "Normal prediction",
+                    data: [0]
+                },
+                {
+                    label: "Adjusted (slider)",
+                    data: [0]
+                }
+            ]
         },
-        scales: {
-            x: { ticks: { color: "#a0a0a0" } },
-            y: { ticks: { color: "#a0a0a0" } }
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { labels: { color: "#f0f0f0" } }
+            }
         }
     }
-});
+);
 
-/* Calculate */
 document.querySelector(".confirm-button").addEventListener("click", () => {
-
-    const payload = {
-        date: document.getElementById("date").value,
-        rain: parseFloat(document.getElementById("rain").value),
-        temperature: parseFloat(document.getElementById("temp").value)
-    };
-
-    fetch("/save_variables", {
+    fetch("/api/slider-predict", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({
+            date: document.getElementById("date").value,
+            rain: document.getElementById("rain").value,
+            temperature: document.getElementById("temp").value
+        })
     })
     .then(res => res.json())
     .then(data => {
-
-        /* TEMP MOCK VALUES – backend will replace */
-        const normal = 6500;
-        const adjusted = 7200;
-
         document.getElementById("result").textContent =
-            adjusted.toLocaleString() + " visitors";
+            data.adjusted.toLocaleString() + " visitors";
 
-        chart.data.datasets[0].data = [normal];
-        chart.data.datasets[1].data = [adjusted];
+        chart.data.datasets[0].data = [data.baseline];
+        chart.data.datasets[1].data = [data.adjusted];
         chart.update();
     });
 });

@@ -162,8 +162,6 @@ def visualize_forecast():
     peak_season_mask = daily_totals['date'].dt.month.isin([7, 8])
     peak_season_avg = daily_totals[peak_season_mask]['total_sales'].mean()
 
-    status = 'ON TARGET' if 7000 <= christmas_avg <= 10000 else 'OFF TARGET'
-
     metrics_text = f"""KEY FORECAST METRICS
 
 OVERALL STATISTICS
@@ -179,12 +177,11 @@ Lowest Day:  {min_day['date'].strftime('%Y-%m-%d')}
 
 CHRISTMAS WEEK (Dec 18-24)
 Average: {int(christmas_avg):,}
-Target: 8,000 - 9,000
-Status: {status}
+
 
 LOW SEASON (Jan, Feb, Nov)
 Average: {int(low_season_avg):,}
-Target: 200 - 500
+
 
 PEAK SEASON (Jul, Aug)
 Average: {int(peak_season_avg):,}
