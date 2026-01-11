@@ -13,7 +13,14 @@ Prerequisites:
 *	Docker & Docker Compose (for containerized deployment)
 *	Git
 
-### Step 1: Prepare Your Data
+### Step 1: Clone and Setup
+In the terminal:
+
+    git clone https://github.com/yourusername/Wildlands_Procyon.git
+
+    cd Wildlands_Procyon
+
+### Step 2: Prepare Your Data
 The application requires specific input files to be placed in the data/raw/ directory. Ensure you have the following files:
 *	campaigns 2022-2026.xlsx
 *	recurring_events_drenthe.xlsx
@@ -23,14 +30,12 @@ The application requires specific input files to be placed in the data/raw/ dire
 *	weather.xlsx
 *	ticketfamilies.xlsx
 
-### Step 2: Clone and Setup
+### Step 3: Install requirements
 In the terminal:
 
-    git clone https://github.com/yourusername/Wildlands_Procyon.git
+    pip install -r requirements.txt
 
-    cd Wildlands_Procyon
-
-### Step 3: Run the Data Pipeline
+### Step 4: Run the Data Pipeline
 Before starting the application, you need to clean and process the raw data.
 
     python -m scripts.run_data_cleaning
@@ -44,7 +49,7 @@ Expected output:
 Starting zoo data cleaning pipeline...
 Data cleaning completed!
 
-### Step 4: Train the Models
+### Step 5: Train the Models
 Next, train the prediction models using the processed data.
 
     python -m scripts.run_model_training
@@ -58,7 +63,7 @@ Expected output:
 Starting zoo model training pipeline...
 Model training completed!
 
-### Step 5: Generate Predictions
+### Step 6: Generate Predictions
 Generate 365-day predictions for the dashboard.
 
     python -m scripts.run_make_predictions
@@ -80,7 +85,7 @@ Starting 365-day zoo prediction pipeline...
 
 The predictions will be saved to data/predictions/forecast_365days_"currentdate"_"currenttime".py
 
-### Step 5.5: Environment Variables (Required)
+### Step 6.5: Environment Variables (Required)
 The application uses Flask sessions for authentication.
 
 Before running the web application, a SECRET_KEY must be set on the terminal.
@@ -95,7 +100,10 @@ Before running the web application, a SECRET_KEY must be set on the terminal.
 
 After setting the environment variable, restart your terminal or container.
 
-### Step 6a: Run Locally (Development)
+### Database.db
+The Database.db file that is provided in the email should be added manually into the webapp folder (Wildlands_Procyon/webapp). 
+
+### Step 7a: Run Locally (Development)
 Install dependencies:
 
     pip install -r requirements.txt
@@ -108,7 +116,7 @@ The application will be available at http://localhost:5000
 
 Note: You'll need to log in. The application uses a SQLite database (database.db) that will be created automatically on first run.
 
-### Step 6b: Run with Docker (Production)
+### Step 7b: Run with Docker (Production)
 Build and run the application using Docker Compose:
 
     docker-compose up --build
