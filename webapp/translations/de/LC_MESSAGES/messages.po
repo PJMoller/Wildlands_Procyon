@@ -102,6 +102,25 @@ msgstr "Niederschlag"
 msgid "Temperature"
 msgstr "Temperatur"
 
+msgid "Holiday Override"
+msgstr "Feiertag Überschreiben"
+
+msgid "Event Override"
+msgstr "Veranstaltung Überschreiben"
+
+msgid "Rain morning"
+msgstr "Regen Morgens"
+
+msgid "Rain Afternoon"
+msgstr "Regen Nachmittags"
+
+msgid "Precip Morning"
+msgstr "Niederschlag Morgens"
+
+msgid "Precip Afternoon"
+msgstr "Niederschlag Nachmittags"
+
+
 msgid "Prediction Comparison"
 msgstr "Vergleich der Vorhersage"
 
@@ -116,3 +135,5 @@ msgstr "Dashboard"
 
 msgid "Upload"
 msgstr "Hochladen"
+
+

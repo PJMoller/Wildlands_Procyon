@@ -22,9 +22,9 @@
             
             <!-- HOLIDAY DROPDOWN -->
             <div class="variable">
-                <label>Holiday Override</label>
+                <label>{{ _('Holiday Override') }}</label>
                 <select id="holiday_name" class="variable-select">
-                    <option value="">(None)</option>
+                    <option value="">{{ _('(None)') }}</option>
                     <option value="90_jr_dierenpark">90 jr Dierenpark</option>
                     <option value="allerheiligen">Allerheiligen</option>
                     <option value="bevrijdingsdag">Bevrijdingsdag</option>
@@ -71,9 +71,9 @@
 
             <!-- EVENT DROPDOWN -->
              <div class="variable">
-                <label>Event Override</label>
+                <label>{{ _('Event Override') }}</label>
                 <select id="event_name" class="variable-select">
-                    <option value="">(None)</option>
+                    <option value="">{{ _('(None)') }}</option>
                     <option value="4_mijl">4 mijl</option>
                     <option value="90_jaar_zoo_emmen">90 jaar zoo emmen</option>
                     <option value="alles_kids">Alles kids</option>
@@ -253,18 +253,6 @@ document.querySelector(".confirm-button").addEventListener("click", () => {
     });
 });
 </script>
-
-<!-- Add simple CSS for select boxes if not already in style.css -->
-<style>
-.variable-select {
-    width: 100%;
-    padding: 8px;
-    margin-top: 5px;
-    border-radius: 4px;
-    border: 1px solid #ccc;
-    background-color: white;
-}
-</style>
 
 </body>
 </html>
