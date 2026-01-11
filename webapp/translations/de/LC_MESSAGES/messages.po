@@ -22,7 +22,7 @@ msgid "Wildlands Dashboard"
 msgstr "Wildlands Dashboard"
 
 msgid "Current day"
-msgstr "Heutiger Tag"
+msgstr "Heute"
 
 msgid "Tomorrow"
 msgstr "Morgen"
