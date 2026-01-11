@@ -10,45 +10,92 @@
 <body class="slider-page">
 <div class="container">
 
-    <!-- LEFT: VARIABLES -->
     <div class="widget current-day">
         <h3>{{ _('Adjust Variables') }}</h3>
         <div class="content-box">
 
             <!-- DATE -->
             <div class="variable">
+<<<<<<< HEAD
                 <label for="date">{{ _('Date') }}</label>
+=======
+                <label>Date</label>
+>>>>>>> e219c19223c76d3d8a6c45bfd2413655f0c0acee
                 <input type="date" id="date">
             </div>
 
-            <!-- RAIN -->
+            <!-- RAIN MORNING -->
             <div class="variable">
                 <div class="variable-top">
+<<<<<<< HEAD
                     <label for="rain">{{ _('Rainfall') }}</label>
                     <input type="number" id="rain-num" value="0" step="0.5" class="variable-value"> 
+=======
+                    <label>Rain Morning</label>
+                    <input type="number" id="rain_morning-num" value="0" step="0.5" class="variable-value">
+>>>>>>> e219c19223c76d3d8a6c45bfd2413655f0c0acee
                     <span>mm</span>
                 </div>
                 <div class="variable-slider">
-                    <input type="range" id="rain" min="0" max="20" step="0.5" value="0">
+                    <input type="range" id="rain_morning" min="0" max="50" step="0.5" value="0">
                 </div>
             </div>
 
-            <!-- TEMP -->
+            <!-- RAIN AFTERNOON -->
             <div class="variable">
                 <div class="variable-top">
+<<<<<<< HEAD
                     <label for="temp">{{ _('Temperature') }}</label>
+=======
+                    <label>Rain Afternoon</label>
+                    <input type="number" id="rain_afternoon-num" value="0" step="0.5" class="variable-value">
+                    <span>mm</span>
+                </div>
+                <div class="variable-slider">
+                    <input type="range" id="rain_afternoon" min="0" max="50" step="0.5" value="0">
+                </div>
+            </div>
+
+            <!-- PRECIP MORNING -->
+            <div class="variable">
+                <div class="variable-top">
+                    <label>Precip Morning</label>
+                    <input type="number" id="precip_morning-num" value="0" step="0.5" class="variable-value">
+                    <span>mm</span>
+                </div>
+                <div class="variable-slider">
+                    <input type="range" id="precip_morning" min="0" max="50" step="0.5" value="0">
+                </div>
+            </div>
+
+            <!-- PRECIP AFTERNOON -->
+            <div class="variable">
+                <div class="variable-top">
+                    <label>Precip Afternoon</label>
+                    <input type="number" id="precip_afternoon-num" value="0" step="0.5" class="variable-value">
+                    <span>mm</span>
+                </div>
+                <div class="variable-slider">
+                    <input type="range" id="precip_afternoon" min="0" max="50" step="0.5" value="0">
+                </div>
+            </div>
+
+            <!-- TEMPERATURE -->
+            <div class="variable">
+                <div class="variable-top">
+                    <label>Temperature</label>
+>>>>>>> e219c19223c76d3d8a6c45bfd2413655f0c0acee
                     <input type="number" id="temp-num" value="15" class="variable-value">
                     <span>°C</span>
                 </div>
                 <div class="variable-slider">
-                    <input type="range" id="temp" min="-5" max="35" step="1" value="15">
+                    <input type="range" id="temp" min="-10" max="35" step="1" value="15">
                 </div>
             </div>
 
         </div>
     </div>
 
-    <!-- RIGHT: GRAPH -->
     <div class="widget events">
          <h3>{{ _('Prediction Comparison') }}</h3>
         <div class="content-box">
@@ -56,7 +103,6 @@
         </div>
     </div>
 
-    <!-- RESULT -->
     <div class="widget forecast">
         <div class="content-box forecast-box">
             <button class="confirm-button">{{ _('Calculate') }}</button>
@@ -65,7 +111,6 @@
         </div>
     </div>
 
-    <!-- BACK -->
     <div class="widget manual-link">
         <div class="content-box link-box">
             <a href="{{ url_for('home') }}" class="manual-button">{{ _('Dashboard') }}</a>
@@ -75,75 +120,58 @@
 </div>
 
 <script>
-/* Sync sliders & inputs */
 function sync(id) {
     const range = document.getElementById(id);
     const num = document.getElementById(id + "-num");
     range.addEventListener("input", () => num.value = range.value);
     num.addEventListener("input", () => range.value = num.value);
 }
-sync("rain");
-sync("temp");
 
-/* Default date = today */
+["rain_morning", "rain_afternoon", "precip_morning", "precip_afternoon", "temp"].forEach(sync);
+
 document.getElementById("date").value =
     new Date().toISOString().split("T")[0];
 
-/* Chart */
-const ctx = document.getElementById("comparisonChart");
-const chart = new Chart(ctx, {
-    type: "bar",
-    data: {
-        labels: ["Prediction"],
-        datasets: [
-            {
-                label: "Normal prediction",
-                data: [0],
-            },
-            {
-                label: "Adjusted (slider)",
-                data: [0],
-            }
-        ]
-    },
-    options: {
-        responsive: true,
-        plugins: {
-            legend: { labels: { color: "#f0f0f0" } }
-        },
-        scales: {
-            x: { ticks: { color: "#a0a0a0" } },
-            y: { ticks: { color: "#a0a0a0" } }
+const chart = new Chart(
+    document.getElementById("comparisonChart"),
+    {
+        type: "bar",
+        data: {
+            labels: ["Visitors"],
+            datasets: [
+                { label: "Normal prediction", data: [0] },
+                { label: "Adjusted (slider)", data: [0] }
+            ]
         }
     }
-});
+);
 
-/* Calculate */
 document.querySelector(".confirm-button").addEventListener("click", () => {
-
     const payload = {
         date: document.getElementById("date").value,
-        rain: parseFloat(document.getElementById("rain").value),
-        temperature: parseFloat(document.getElementById("temp").value)
+        temperature: document.getElementById("temp").value,
+
+        rain_morning: document.getElementById("rain_morning").value,
+        rain_afternoon: document.getElementById("rain_afternoon").value,
+
+        precip_morning: document.getElementById("precip_morning").value,
+        precip_afternoon: document.getElementById("precip_afternoon").value
     };
 
-    fetch("/save_variables", {
+    console.log("Sending payload:", payload);
+
+    fetch("/api/slider-predict", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
     })
     .then(res => res.json())
     .then(data => {
-
-        /* TEMP MOCK VALUES – backend will replace */
-        const normal = 6500;
-        const adjusted = 7200;
-
         document.getElementById("result").textContent =
-            adjusted.toLocaleString() + " visitors";
+            data.adjusted.toLocaleString() + " visitors";
 
-        chart.data.datasets[0].data = [normal];
-        chart.data.datasets[1].data = [adjusted];
+        chart.data.datasets[0].data = [data.baseline];
+        chart.data.datasets[1].data = [data.adjusted];
         chart.update();
     });
 });

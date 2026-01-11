@@ -4,6 +4,7 @@ data/*
 !data/database/
 !data/predictions/
 !data/models/
+!data/img/
 
 data/raw/*
 data/processed/*

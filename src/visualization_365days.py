@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 
 # Import paths
-from paths import PREDICTIONS_DIR, PROCESSED_DIR
+from paths import PREDICTIONS_DIR, IMG_DIR
 
 def visualize_forecast():
     """Create comprehensive visualizations of the 365-day forecast."""
@@ -162,8 +162,6 @@ def visualize_forecast():
     peak_season_mask = daily_totals['date'].dt.month.isin([7, 8])
     peak_season_avg = daily_totals[peak_season_mask]['total_sales'].mean()
 
-    status = 'ON TARGET' if 7000 <= christmas_avg <= 10000 else 'OFF TARGET'
-
     metrics_text = f"""KEY FORECAST METRICS
 
 OVERALL STATISTICS
@@ -179,12 +177,11 @@ Lowest Day:  {min_day['date'].strftime('%Y-%m-%d')}
 
 CHRISTMAS WEEK (Dec 18-24)
 Average: {int(christmas_avg):,}
-Target: 8,000 - 9,000
-Status: {status}
+
 
 LOW SEASON (Jan, Feb, Nov)
 Average: {int(low_season_avg):,}
-Target: 200 - 500
+
 
 PEAK SEASON (Jul, Aug)
 Average: {int(peak_season_avg):,}
@@ -201,7 +198,7 @@ Average: {int(peak_season_avg):,}
     plt.tight_layout()
 
     # Save the figure
-    output_file = PREDICTIONS_DIR / f"forecast_visualization_{pd.Timestamp.now().strftime('%Y%m%d_%H%M')}.png"
+    output_file = IMG_DIR / f"forecast_visualization_{pd.Timestamp.now().strftime('%Y%m%d_%H%M')}.png"
     plt.savefig(output_file, dpi=300, bbox_inches='tight')
     print(f"\nVisualization saved: {output_file}")
 

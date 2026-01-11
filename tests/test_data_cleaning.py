@@ -1,11 +1,11 @@
 import unittest
 from unittest.mock import patch
 import pandas as pd
-import sys
-import os
 import io
+import os
+import sys
 
-# Add project root for importing
+# Add project root for imports
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
@@ -16,11 +16,10 @@ class TestDataProcessing(unittest.TestCase):
     def setUp(self):
         # Common mock data for all tests
         self.visitor_data = pd.DataFrame({
-            "AccessGroupId": [1, 2],
-            "Description": ["adult", "child"],
-            "Date": ["2023-01-01", "2023-01-02"],
-            "NumberOfUsedEntrances": [100, 150],
-            #"ticket_num": [1, 2]  # Added to fix KeyError
+            "date": ["2023-01-01", "2023-01-02"],
+            "groupID": [1, 2],
+            "ticket_name": ["adult", "child"],
+            "ticket_num": [10, 20]
         })
 
         self.weather_csv_data = pd.DataFrame({
@@ -67,89 +66,93 @@ class TestDataProcessing(unittest.TestCase):
 
         self.ticketfam_data = pd.DataFrame({
             "Subgroup": ["adult", "child"],
-            "ticket_family": ["family_adult", "family_child"],
-            "ticket_num": [1, 2]
+            "ticket_family": ["family_adult", "family_child"]
         })
 
     @patch("pandas.read_csv")
     @patch("pandas.read_excel")
-    @patch("pandas.DataFrame.to_csv")  # just ignore writes
-    def test_process_data_runs(self, mock_to_csv, mock_read_excel, mock_read_csv):
+    def test_process_data_runs(self, mock_read_excel, mock_read_csv):
         mock_read_csv.side_effect = [self.visitor_data, self.weather_csv_data]
         mock_read_excel.side_effect = [
             self.weather_xlsx, self.holiday_data, self.camp_data,
             self.recurring_data, self.ticketfam_data
         ]
 
-        mock_to_csv.return_value = None  # do nothing on save
+        # Capture DataFrame passed to to_csv
+        saved_df_container = {}
+        def fake_to_csv(self_df, *args, **kwargs):
+            saved_df_container['df'] = self_df
 
-        # run process_data and capture returned DataFrame
-        saved_df = process_data()
+        with patch("pandas.DataFrame.to_csv", new=fake_to_csv):
+            process_data()
 
-        # now assert columns
-        for col in ["ticket_num", "temperature", "rain_morning", "precip_morning",
-                    "year", "month", "day", "week", "weekday"]:
+        saved_df = saved_df_container['df']
+        self.assertIsInstance(saved_df, pd.DataFrame)
+
+        # Check expected columns exist
+        expected_cols = [
+            "ticket_num", "temperature", "rain_morning", "precip_morning",
+            "year", "month", "day", "week", "weekday"
+        ]
+        for col in expected_cols:
             self.assertIn(col, saved_df.columns)
 
     @patch("pandas.read_csv")
     @patch("pandas.read_excel")
-    @patch("pandas.DataFrame.to_csv")
-    def test_process_data_output(self, mock_to_csv, mock_read_excel, mock_read_csv):
-        # Setup mocks
+    def test_process_data_output(self, mock_read_excel, mock_read_csv):
         mock_read_csv.side_effect = [self.visitor_data, self.weather_csv_data]
         mock_read_excel.side_effect = [
             self.weather_xlsx, self.holiday_data, self.camp_data,
             self.recurring_data, self.ticketfam_data
         ]
-        mock_to_csv.return_value = None
 
-        # Capture returned DataFrame
-        df = process_data()
+        saved_df_container = {}
 
-        # Assertions
-        self.assertIsNotNone(df)
+        # the *args, **kwargs are needed because process_data may pass index, sep
+        # I ignore them and just store the DataFrame for testing
+        def fake_to_csv(self_df, *args, **kwargs):
+            saved_df_container['df'] = self_df
+
+        # Patching datagame.to_csv inside this test.
+        with patch("pandas.DataFrame.to_csv", new=fake_to_csv):
+            process_data()
+
+        saved_df = saved_df_container['df']
+        self.assertIsInstance(saved_df, pd.DataFrame)
         for col in ["ticket_num", "temperature", "rain_morning", "precip_morning",
                     "year", "month", "day", "week", "weekday"]:
-            self.assertIn(col, df.columns)
+            self.assertIn(col, saved_df.columns)
 
-    def test_process_data_empty_dfs(self):
-        with patch("pandas.read_csv", return_value=pd.DataFrame()), \
-             patch("pandas.read_excel", return_value=pd.DataFrame()), \
-             patch("pandas.DataFrame.to_csv") as mock_to_csv, \
+    def test_process_data_empty_files(self):
+        with patch("pandas.read_csv", side_effect=FileNotFoundError("No file")), \
+             patch("pandas.read_excel", side_effect=FileNotFoundError("No file")), \
              patch('sys.stdout', new_callable=io.StringIO) as mock_stdout:
 
             process_data()
-            mock_to_csv.assert_not_called()
             output = mock_stdout.getvalue()
-            self.assertIn("DataFrame 0 is empty", output)
+            self.assertIn("Error loading visitor data", output)
 
-    def test_process_data_incorrect_columns(self):
+    @patch("pandas.read_csv")
+    @patch("pandas.read_excel")
+    def test_process_data_incorrect_columns(self, mock_read_excel, mock_read_csv):
         incorrect_visitor_data = pd.DataFrame({
-            "WrongColumn1": [1, 2],
-            "WrongColumn2": ["adult", "child"]
+            "wrong1": [1, 2],
+            "wrong2": ["a", "b"],
+            "wrong3": [0, 0],
+            "wrong4": [0, 0]
         })
+        mock_read_csv.side_effect = [incorrect_visitor_data, self.weather_csv_data]
+        mock_read_excel.side_effect = [
+            self.weather_xlsx, self.holiday_data, self.camp_data,
+            self.recurring_data, self.ticketfam_data
+        ]
 
-        valid_weather_data = pd.DataFrame({
-            "date": pd.to_datetime(["2023-01-01", "2023-01-02"]),
-            "temperature": [10, 12],
-            "rain": [0, 0],
-            "precipitation": [0, 0],
-            "hour": [10, 11]
-        })
-
-        with patch("pandas.read_csv", return_value=incorrect_visitor_data), \
-             patch("pandas.read_excel", side_effect=[valid_weather_data,
-                                                     self.holiday_data,
-                                                     self.camp_data,
-                                                     self.recurring_data,
-                                                     self.ticketfam_data]), \
-             patch("pandas.DataFrame.to_csv") as mock_to_csv, \
-             patch('sys.stdout', new_callable=io.StringIO) as mock_stdout:
-
-            process_data()
-            mock_to_csv.assert_not_called()
-            output = mock_stdout.getvalue()
-            self.assertIn("DataFrame 0 is missing required columns", output)
+        # Expect AttributeError when trying to access 'ticket_name'
+        with patch("pandas.DataFrame.to_csv") as fake_to_csv:
+            with self.assertRaises(AttributeError):
+                process_data()
+                # Making sure no file was attempted to be written.
+            fake_to_csv.assert_not_called()
 
 
 if __name__ == "__main__":

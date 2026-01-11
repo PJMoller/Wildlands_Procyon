@@ -1,39 +1,9 @@
-if (window.location.pathname === "/login") {
-    console.log("Login page detected — skipping dashboard JS");
-} else {
-    document.addEventListener('DOMContentLoaded', () => {
-        const chartButtons = document.querySelectorAll('.chart-options button');
-        const startDateInput = document.getElementById('start-date');
-
-        if (!startDateInput) return;
-
-        startDateInput.value = new Date().toISOString().split('T')[0];
-
-        loadChart('week', startDateInput.value);
-        loadTodayWidgets();
-        loadDaySummary(startDateInput.value);
-        loadUploadStatus();
-
-        chartButtons.forEach(btn => {
-            btn.addEventListener('click', () => {
-                chartButtons.forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                loadChart(btn.dataset.range, startDateInput.value);
-            });
-        });
-
-        startDateInput.addEventListener('change', () => {
-            const activeBtn = document.querySelector('.chart-options button.active');
-            loadChart(activeBtn.dataset.range, startDateInput.value);
-            loadDaySummary(startDateInput.value);
-        });
-    });
-}
-
 document.addEventListener('DOMContentLoaded', () => {
 
     const chartButtons = document.querySelectorAll('.chart-options button');
     const startDateInput = document.getElementById('start-date');
+
+    if (!startDateInput) return;
 
     startDateInput.value = new Date().toISOString().split('T')[0];
 
@@ -57,6 +27,42 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
+
+// ---------------- WEATHER ----------------
+async function loadTodayWidgets() {
+    const res = await fetch("/api/today");
+    const data = await res.json();
+
+    const todayBox = document.querySelector(".current-day .content-box");
+    const tomorrowBox = document.querySelector(".tomorrow .content-box");
+
+    todayBox.querySelector(".visitor-count").textContent =
+        (data.today.visitors?.toLocaleString() || "0") + " Visitors";
+
+    tomorrowBox.querySelector(".visitor-count").textContent =
+        (data.tomorrow.visitors?.toLocaleString() || "0") + " Visitors";
+
+    const todayWeather = `🌡 ${data.today.temperature ?? "?"}°C · 🌧 ${data.today.rain ?? "?"} mm`;
+    const tomorrowWeather = `🌡 ${data.tomorrow.temperature ?? "?"}°C · 🌧 ${data.tomorrow.rain ?? "?"} mm`;
+
+    addWeatherText(todayBox, todayWeather);
+    addWeatherText(tomorrowBox, tomorrowWeather);
+}
+
+function addWeatherText(container, text) {
+    let weatherEl = container.querySelector(".weather-info");
+
+    if (!weatherEl) {
+        weatherEl = document.createElement("p");
+        weatherEl.className = "weather-info";
+        container.appendChild(weatherEl);
+    }
+
+    weatherEl.textContent = text;
+}
+
+
+// ---------------- BAR CHART ----------------
 async function loadChart(range = 'week', date) {
     try {
         const res = await fetch(`/api/visitors?range=${range}&date=${date}`);
@@ -87,8 +93,7 @@ async function loadChart(range = 'week', date) {
             xaxis: { tickangle: -45, showgrid: false, zeroline: false },
             yaxis: { showgrid: true, gridcolor: '#444' },
             bargap: 0.25,
-            autosize: true,
-            responsive: true
+            autosize: true
         };
 
         Plotly.newPlot(chartEl, [trace], layout, { responsive: true, displayModeBar: false });
@@ -98,19 +103,8 @@ async function loadChart(range = 'week', date) {
     }
 }
 
-async function loadTodayWidgets() {
-    const res = await fetch("/api/today");
-    const data = await res.json();
 
-    document.querySelector(".current-day .content-box p:first-child").textContent = data.today.date;
-    document.querySelector(".current-day .visitor-count").textContent =
-        (data.today.visitors?.toLocaleString() || "0") + " Visitors";
-
-    document.querySelector(".tomorrow .content-box p:first-child").textContent = data.tomorrow.date;
-    document.querySelector(".tomorrow .visitor-count").textContent =
-        (data.tomorrow.visitors?.toLocaleString() || "0") + " Visitors";
-}
-
+// ---------------- PIE CHART ----------------
 async function loadDaySummary(date) {
     try {
         const summaryRes = await fetch("/api/day-tickets?date=" + date);
@@ -159,6 +153,8 @@ async function loadDaySummary(date) {
     }
 }
 
+
+// ---------------- UPLOAD STATUS ----------------
 async function loadUploadStatus() {
     const statusEl = document.getElementById("upload-status");
     if (!statusEl) return;
@@ -177,15 +173,14 @@ async function loadUploadStatus() {
 }
 
 
-
-/*file button*/
+// ---------------- FILE INPUT UI ----------------
 const fileInput = document.querySelector('input[type="file"]');
 const fileName = document.querySelector('.file-name');
 
-fileInput.addEventListener('change', () => {
-    if (fileInput.files.length > 0) {
-        fileName.textContent = fileInput.files[0].name;
-    } else {
-        fileName.textContent = 'No file chosen';
-    }
-});
+if (fileInput) {
+    fileInput.addEventListener('change', () => {
+        fileName.textContent = fileInput.files.length
+            ? fileInput.files[0].name
+            : 'No file chosen';
+    });
+}

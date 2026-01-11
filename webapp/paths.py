@@ -17,6 +17,7 @@ PROCESSED_DIR = DATA_DIR / "processed"
 PREDICTIONS_DIR = DATA_DIR / "predictions"
 MODELS_DIR = DATA_DIR / "models"
 SRC_DIR = PROJECT_ROOT / "src"
+IMG_DIR = PREDICTIONS_DIR / "img"
 
 FAMILY_MODELS_PATH = MODELS_DIR / "family_models.pkl"
 FEATURE_COLS_PATH = MODELS_DIR / "feature_cols.pkl"
