@@ -1,5 +1,4 @@
 flask
-flask-babel
 pandas
 numpy
 joblib

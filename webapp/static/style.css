@@ -654,11 +654,12 @@ h2 {
 
 /* language style */
 .language-selector {
-    position: absolute;
+    position: fixed;
     top: 30px;
-    right: 60px;
+    right: 45px;
     display: flex;
     gap: 15px;
+    z-index: 1000;
 }
 
 .language-selector img {
