@@ -366,6 +366,15 @@ h3 {
         grid-row: auto !important;
     }
     
+    .language-selector {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    grid-column: unset;
+    grid-row: unset;
+    padding: 0;
+    }
+
     .chart-bars {
         gap: 4px;
     }
@@ -654,13 +663,17 @@ h2 {
 
 /* language style */
 .language-selector {
-    position: fixed;
-    top: 30px;
-    right: 45px;
-    display: flex;
-    gap: 15px;
-    z-index: 1000;
+  grid-column: 3 / 5;
+  grid-row: 1 / 2;
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-start;
+  gap: 15px;
+  padding: 20px;
+  z-index: 10;
 }
+
+
 
 .language-selector img {
     width: 40px;

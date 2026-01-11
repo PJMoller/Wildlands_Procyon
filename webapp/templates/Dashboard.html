@@ -12,17 +12,17 @@
 
 <div class="container">
 
-<div class="language-selector">
-    <a href="{{ url_for('set_language', language='en') }}" title="English">
-        <img src="{{ url_for('static', filename='flags/gb.svg') }}" alt="English">
-    </a> 
-    <a href="{{ url_for('set_language', language='nl') }}" title="Dutch">
-        <img src="{{ url_for('static', filename='flags/nl.svg') }}" alt="Dutch">
-    </a>
-    <a href="{{ url_for('set_language', language='de') }}" title="German">
-        <img src="{{ url_for('static', filename='flags/de.svg') }}" alt="German">
-    </a>
-</div>
+    <div class="language-selector">
+        <a href="{{ url_for('set_language', language='en') }}" title="English">
+            <img src="{{ url_for('static', filename='flags/gb.svg') }}" alt="English">
+        </a> 
+        <a href="{{ url_for('set_language', language='nl') }}" title="Dutch">
+            <img src="{{ url_for('static', filename='flags/nl.svg') }}" alt="Dutch">
+        </a>
+        <a href="{{ url_for('set_language', language='de') }}" title="German">
+            <img src="{{ url_for('static', filename='flags/de.svg') }}" alt="German">
+        </a>
+    </div>
 
     <div class="widget current-day">
         <h3>{{ _('Current day') }}</h3>

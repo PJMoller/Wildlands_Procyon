@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadTodayWidgets();
     loadDaySummary(startDateInput.value);
     loadUploadStatus();
-    loadEvents(); // ✅ ADDED
+    loadEvents(); 
 
     chartButtons.forEach(btn => {
         btn.addEventListener('click', () => {
