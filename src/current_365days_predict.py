@@ -107,7 +107,7 @@ def _get_adaptive_scaling_bounds(current_date: datetime, fam_wape: float) -> tup
         if is_trusted:
             return (0.70, 1.50) # Loosened slightly to catch summer peaks
         else:
-            return (0.50, 1.80)
+            return (0.50, 1.30)
 
 
 def _apply_extreme_shape_injection(pred: float, current_date: datetime, multipliers: dict) -> float:
@@ -402,11 +402,13 @@ def predict_next_365_days(forecast_days: int = 365, openmeteo_days: int = 14, ma
     if manual_growth_override:
         trend_ratio = manual_growth_override
     else:
-        trend_ratio = np.clip(trend_ratio, 0.70, 1.30)
+        trend_ratio = np.clip(trend_ratio, 0.70, 1.15)
 
     target_doy_map = {k: v * trend_ratio for k, v in raw_target_doy_map.items()}
     target_family_map = {k: v * trend_ratio for k, v in raw_target_family_map.items()}
 
+    # kept in rolling features even though unused just in case we switch to the other model
+    # current model is better as it reacts to weather/holidays/events but kept these in just in case, no need to remove as they don't affect anything
     history_feature_cols = [c for c in model_features if "lag" in c or "rolling" in c or "sales" in c or "available" in c]
     hist_by_ticket = {}
     for tname, _ in ticket_list:
