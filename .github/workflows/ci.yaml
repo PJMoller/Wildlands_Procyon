@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
   schedule:
-    - cron: '0 7 * * *'  # Everyday at 08:00 GMT+1 In winter it's 09:00
+    - cron: '0 3 * * *'  # Everyday at 04:00 GMT+1 In winter it's 05:00
 
 jobs:
   pipeline:
