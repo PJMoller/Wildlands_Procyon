@@ -19,12 +19,99 @@
                 <label for="date">{{ _('Date') }}</label>
                 <input type="date" id="date">
             </div>
+            
+            <!-- HOLIDAY DROPDOWN -->
+            <div class="variable">
+                <label>Holiday Override</label>
+                <select id="holiday_name" class="variable-select">
+                    <option value="">(None)</option>
+                    <option value="90_jr_dierenpark">90 jr Dierenpark</option>
+                    <option value="allerheiligen">Allerheiligen</option>
+                    <option value="bevrijdingsdag">Bevrijdingsdag</option>
+                    <option value="dag_van_de_duitse_eenheid">Dag van de Duitse Eenheid</option>
+                    <option value="dag_van_de_arbeid">Dag van de arbeid</option>
+                    <option value="dierendag">Dierendag</option>
+                    <option value="dreamnight">Dreamnight</option>
+                    <option value="eerste_kerstdag">Eerste Kerstdag</option>
+                    <option value="eerste_paasdag">Eerste Paasdag</option>
+                    <option value="eerste_pinksterdag">Eerste Pinksterdag</option>
+                    <option value="goede_vrijdag">Goede Vrijdag</option>
+                    <option value="goede_vrijdag">Goede vrijdag</option>
+                    <option value="halloween">Halloween</option>
+                    <option value="hemelvaartsdag">Hemelvaartsdag</option>
+                    <option value="hemelvaartsweekend">Hemelvaartsweekend</option>
+                    <option value="herfstvakantie">Herfstvakantie</option>
+                    <option value="hervormingsdag">Hervormingsdag</option>
+                    <option value="kerstvakantie">Kerstvakantie</option>
+                    <option value="koningsdag">Koningsdag</option>
+                    <option value="meivakantie">Meivakantie</option>
+                    <option value="moederdag">Moederdag</option>
+                    <option value="nieuwjaarsdag">Nieuwjaarsdag</option>
+                    <option value="oudejaarsdag">Oudejaarsdag</option>
+                    <option value="oudjaarsdag">Oudjaarsdag</option>
+                    <option value="paasvakantie">Paasvakantie</option>
+                    <option value="pinkstermaandag">Pinkstermaandag</option>
+                    <option value="pinkstervakantie">Pinkstervakantie</option>
+                    <option value="rosenmontag">Rosenmontag</option>
+                    <option value="sacramentsdag">Sacramentsdag</option>
+                    <option value="sacrementsdag">Sacrementsdag</option>
+                    <option value="sint_maarten">Sint Maarten</option>
+                    <option value="sinterklaas">Sinterklaas</option>
+                    <option value="tweede_kerstdag">Tweede Kerstdag</option>
+                    <option value="tweede_paasdag">Tweede Paasdag</option>
+                    <option value="tweede_pinksterdag">Tweede Pinksterdag</option>
+                    <option value="vaderdag">Vaderdag</option>
+                    <option value="valentijdsdag">Valentijdsdag</option>
+                    <option value="valentijnsdag">Valentijnsdag</option>
+                    <option value="voorjaarsvakantie">Voorjaarsvakantie</option>
+                    <option value="wintervakantie">Wintervakantie</option>
+                    <option value="zomervakantie">Zomervakantie</option>
+                </select>
+            </div>
+
+            <!-- EVENT DROPDOWN -->
+             <div class="variable">
+                <label>Event Override</label>
+                <select id="event_name" class="variable-select">
+                    <option value="">(None)</option>
+                    <option value="4_mijl">4 mijl</option>
+                    <option value="90_jaar_zoo_emmen">90 jaar zoo emmen</option>
+                    <option value="alles_kids">Alles kids</option>
+                    <option value="barrel_food_truck_festival">Barrel food truck festival</option>
+                    <option value="bevrijdingsfestival">Bevrijdingsfestival</option>
+                    <option value="boerenrock_festival">Boerenrock festival</option>
+                    <option value="c'est_la_vie">C'est la vie</option>
+                    <option value="c’est_la_vie">C’est la Vie</option>
+                    <option value="dierendag_-_wildlands">Dierendag - Wildlands</option>
+                    <option value="emmen_on_ice">Emmen on ice</option>
+                    <option value="exclusive_avond_abonnement_-_wildlands">Exclusive avond abonnement - Wildlands</option>
+                    <option value="fc_emmen_-_ado">Soccer</option>
+                    <option value="gouden_pijl">Gouden pijl</option>
+                    <option value="hello_festival">Hello festival</option>
+                    <option value="herfst_-_wildlands">Herfst - Wildlands</option>
+                    <option value="koningsdag">Koningsdag</option>
+                    <option value="koningsnacht">Koningsnacht</option>
+                    <option value="meivakantie_met_activiteiten_-_wildlands">Meivakantie met activiteiten - Wildlands</option>
+                    <option value="midzomerfestival">Midzomerfestival</option>
+                    <option value="moederdag_ontbijt_-_wildlands">Moederdag ontbijt - Wildlands</option>
+                    <option value="paasontbijt_-_wildlands">Paasontbijt - Wildlands</option>
+                    <option value="tt-assen">TT-Assen</option>
+                    <option value="uitfestival">Uitfestival</option>
+                    <option value="vaderdag_ontbijt-_wildlands">Vaderdag ontbijt- Wildlands</option>
+                    <option value="valentijnsdiner_-_wildlands">Valentijnsdiner - Wildlands</option>
+                    <option value="voorjaarsvakantie_activiteiten_-_wildlands">Voorjaarsvakantie activiteiten - Wildlands</option>
+                    <option value="vroege_vogel_ontbijt_-_wildlands">Vroege vogel ontbijt - Wildlands</option>
+                    <option value="wildnights">WILDnights</option>
+                    <option value="wildsummer">WILDsummer</option>
+                    <option value="c'est_la_vie">c'est la vie</option>
+                </select>
+            </div>
 
             <!-- RAIN MORNING -->
             <div class="variable">
                 <div class="variable-top">
                     <label for="rain">{{ _('Rainfall') }}</label>
-                    <input type="number" id="rain-num" value="0" step="0.5" class="variable-value"> 
+                    <input type="number" id="rain_morning-num" value="0" step="0.5" class="variable-value"> 
                     <span>mm</span>
                 </div>
                 <div class="variable-slider">
@@ -35,7 +122,43 @@
             <!-- RAIN AFTERNOON -->
             <div class="variable">
                 <div class="variable-top">
-                    <label for="temp">{{ _('Temperature') }}</label>
+                    <label>{{ _('Rain Afternoon') }}</label>
+                    <input type="number" id="rain_afternoon-num" value="0" step="0.5" class="variable-value">
+                    <span>mm</span>
+                </div>
+                <div class="variable-slider">
+                    <input type="range" id="rain_afternoon" min="0" max="50" step="0.5" value="0">
+                </div>
+            </div>
+
+            <!-- PRECIP MORNING -->
+            <div class="variable">
+                <div class="variable-top">
+                    <label>{{ _('Precip Morning') }}</label>
+                    <input type="number" id="precip_morning-num" value="0" step="0.5" class="variable-value">
+                    <span>mm</span>
+                </div>
+                <div class="variable-slider">
+                    <input type="range" id="precip_morning" min="0" max="50" step="0.5" value="0">
+                </div>
+            </div>
+
+            <!-- PRECIP AFTERNOON -->
+            <div class="variable">
+                <div class="variable-top">
+                    <label>{{ _('Precip Afternoon') }}</label>
+                    <input type="number" id="precip_afternoon-num" value="0" step="0.5" class="variable-value">
+                    <span>mm</span>
+                </div>
+                <div class="variable-slider">
+                    <input type="range" id="precip_afternoon" min="0" max="50" step="0.5" value="0">
+                </div>
+            </div>
+
+            <!-- TEMPERATURE -->
+            <div class="variable">
+                <div class="variable-top">
+                    <label>{{ _('Temperature') }}</label>
                     <input type="number" id="temp-num" value="15" class="variable-value">
                     <span>°C</span>
                 </div>
@@ -101,6 +224,9 @@ document.querySelector(".confirm-button").addEventListener("click", () => {
     const payload = {
         date: document.getElementById("date").value,
         temperature: document.getElementById("temp").value,
+        
+        holiday_name: document.getElementById("holiday_name").value,
+        event_name: document.getElementById("event_name").value,
 
         rain_morning: document.getElementById("rain_morning").value,
         rain_afternoon: document.getElementById("rain_afternoon").value,
@@ -127,6 +253,18 @@ document.querySelector(".confirm-button").addEventListener("click", () => {
     });
 });
 </script>
+
+<!-- Add simple CSS for select boxes if not already in style.css -->
+<style>
+.variable-select {
+    width: 100%;
+    padding: 8px;
+    margin-top: 5px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    background-color: white;
+}
+</style>
 
 </body>
 </html>

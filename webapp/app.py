@@ -241,7 +241,7 @@ def slider_predict():
         p_afternoon = float(payload.get("precip_afternoon", 0.0))
 
         adjusted_total = predict_single_day(
-            date=date_str,
+            input_date=date_str,
             temperature=float(payload.get("temperature", 15.0)),
             rain_morning=r_morning,
             rain_afternoon=r_afternoon,
@@ -249,7 +249,6 @@ def slider_predict():
             precip_afternoon=p_afternoon,
             event_name=payload.get("event_name"),
             holiday_name=payload.get("holiday_name"),
-            holiday_intensity=int(payload.get("holiday_intensity", 0))
         )
 
         return jsonify({
