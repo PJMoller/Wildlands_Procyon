@@ -212,9 +212,29 @@ def process_data():
     
     # --- Train Global Model ---
     print("\nTraining global LightGBM model...")
-    
+    # 1 = increasing, -1 = decreasing, 0 = no constraint
+    monotone_constraints = [0] * len(feature_cols)
+
+    negative_features = [
+    "rain",
+    "rain_morning",
+    "rain_afternoon",
+    "precipitation",
+    "precip_morning", 
+    "precip_afternoon"
+    ]
+
+
+    print("--- Applying Monotonic Constraints ---")
+    for col_name in negative_features:
+        if col_name in feature_cols:
+            idx = feature_cols.index(col_name)
+            monotone_constraints[idx] = -1  # Force negative correlation
+            print(f"  -> Forced negative constraint on: {col_name}")
     # Define the model
+
     model = lgb.LGBMRegressor(
+        monotone_constraints=monotone_constraints,
         objective='regression',
         metric='mae',
         n_estimators=1000,
