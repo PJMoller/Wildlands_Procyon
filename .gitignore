@@ -1,4 +1,5 @@
 data/*
+
 !data/raw/
 !data/processed/
 !data/database/
@@ -10,9 +11,10 @@ data/raw/*
 data/processed/*
 data/database/*
 data/predictions/*
-!data/predictions/img/
 data/models/*
+data/img/*
 
+!data/predictions/img/
 data/predictions/img/*
 !data/predictions/img/.gitkeep
 
@@ -20,8 +22,10 @@ data/predictions/img/*
 !data/processed/.gitkeep
 !data/database/.gitkeep
 !data/predictions/.gitkeep
-!data/database/database_sample.db
 !data/models/.gitkeep
+!data/img/.gitkeep
+
+!data/database/database_sample.db
 
 tests/visulization/charts/*
 !tests/visulization/charts/.gitkeep
