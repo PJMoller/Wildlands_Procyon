@@ -16,7 +16,7 @@ Required:
 import sys
 from pathlib import Path
 
-print("In run_make_prediction.py")
+print("In run_make_predictions.py")
 
 # Add project root to sys.path for absolute imports
 PROJECT_ROOT = Path(__file__).resolve().parents[1]  # WILDLANDS_PROCYON/
@@ -24,7 +24,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 # Import prediction pipeline
-from src.new_365days_predict import predict_next_365_days  # adjust path if needed
+from src.current_365days_predict import predict_next_365_days  # adjust path if needed
 
 
 def main() -> None:
