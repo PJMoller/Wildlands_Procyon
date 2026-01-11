@@ -16,7 +16,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from sklearn.base import clone
 from sklearn.metrics import make_scorer
-from paths import MODELS_DIR, PROCESSED_DIR, PREDICTIONS_DIR
+from paths import MODELS_DIR, PROCESSED_DIR, PREDICTIONS_DIR, IMG_DIR
 
 def wape_score(y_true, y_pred):
     if np.sum(y_true) == 0:
@@ -295,7 +295,7 @@ def process_data():
     plt.ylabel('Feature')
     plt.gca().invert_yaxis()
     plt.tight_layout()
-    plt.savefig(PROCESSED_DIR / "feature_importances.png", dpi=300)
+    plt.savefig(IMG_DIR / "feature_importances.png", dpi=300)
     plt.close()
     
     # Save the global model

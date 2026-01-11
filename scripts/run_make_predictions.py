@@ -24,7 +24,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 # Import prediction pipeline
-from src.current_365days_predict import predict_next_365_days  # adjust path if needed
+from src.event_365days import predict_next_365_days  # adjust path if needed
 
 
 def main() -> None:

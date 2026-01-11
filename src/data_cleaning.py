@@ -307,7 +307,9 @@ def process_data():
     print("Creating multi-scale lag and rolling features...")
     merged_df = merged_df.sort_values(['ticket_name', 'date'])
     group = merged_df.groupby('ticket_name')['ticket_num']
-    
+    """
+    # Uncomment if you want the higher trend features
+    # This will have a higher R2 score (98.5%) but ignores many real-world factors like rain and holidays only predicts based on current trend
     # Multi-scale lags
     for lag in [1, 2, 3, 7, 14, 21, 30]:
         merged_df[f'sales_lag_{lag}'] = group.shift(lag)
@@ -319,6 +321,10 @@ def process_data():
         merged_df[f'sales_rolling_min_{window}'] = group.rolling(window).min().reset_index(level=0, drop=True)
         merged_df[f'sales_rolling_max_{window}'] = group.rolling(window).max().reset_index(level=0, drop=True)
     
+    # Add Momentum Features
+    merged_df['sales_momentum_7d'] = merged_df['sales_lag_1'] - merged_df['sales_lag_7']
+    merged_df['sales_trend_30d'] = merged_df['sales_lag_1'] - merged_df['sales_lag_30']
+    """
     # Fill NaN values
     lag_cols = [col for col in merged_df.columns if 'sales_lag_' in col or 'sales_rolling_' in col]
     merged_df[lag_cols] = merged_df[lag_cols].fillna(0)
@@ -333,9 +339,7 @@ def process_data():
     merged_df['days_until_holiday'] = (next_holidays['holiday_date'] - merged_df['date']).dt.days
     merged_df['days_since_holiday'] = (merged_df['date'] - prev_holidays['holiday_date']).dt.days
     
-    # Add Momentum Features
-    merged_df['sales_momentum_7d'] = merged_df['sales_lag_1'] - merged_df['sales_lag_7']
-    merged_df['sales_trend_30d'] = merged_df['sales_lag_1'] - merged_df['sales_lag_30']
+    
     
     # weather holiday interactions
     merged_df['temp_x_holiday_intensity'] = merged_df['temperature'] * merged_df['holiday_intensity']
@@ -358,13 +362,15 @@ def process_data():
     merged_df['days_since_available'] = merged_df.groupby('ticket_name')['is_available'].apply(
         calculate_days_since_available
     ).reset_index(level=0, drop=True)
-    
+    """
+    # Uncomment if you want the higher trend features
+    # This will have a higher R2 score (98.5%) but ignores many real-world factors like rain and holidays only predicts based on current trend
     # Add Family-Level Features
     family_group = merged_df.groupby(['date', 'ticket_family'])['ticket_num'].sum().reset_index()
     family_pivot = family_group.pivot(index='date', columns='ticket_family', values='ticket_num').fillna(0)
     family_pivot.columns = [f'family_{col}_sales' for col in family_pivot.columns]
     merged_df = pd.merge(merged_df, family_pivot, on='date', how='left')
-    
+    """
     # Drop rows with critical missing values
     merged_df.dropna(subset=['ticket_num', 'date', 'ticket_name'], inplace=True)
     

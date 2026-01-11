@@ -4,6 +4,7 @@ numpy
 joblib
 scikit-learn
 openmeteo-requests
+openpyxl
 requests-cache
 retry-requests
 pytest
