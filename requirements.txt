@@ -8,3 +8,5 @@ requests-cache
 retry-requests
 pytest
 gunicorn
+xgboost
+lightgbm
