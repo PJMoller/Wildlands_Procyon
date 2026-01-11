@@ -101,6 +101,7 @@ def load_df():
         return pd.DataFrame(columns=["date", "total_visitors"])
 
     latest_file = max(files, key=lambda f: f.stat().st_mtime)
+    print(latest_file)
     raw = pd.read_csv(latest_file, low_memory=False)
     raw["date"] = pd.to_datetime(raw["date"]).dt.normalize()
 

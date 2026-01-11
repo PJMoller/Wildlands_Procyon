@@ -23,7 +23,7 @@ try:
 except Exception:
     PROCESSED_DATA_PATH = PROCESSED_DIR / "processed_merge.csv"
 
-from current_365days_predict import (
+from src.current_365days_predict import (
     _compute_extreme_multipliers,
     _get_adaptive_scaling_bounds,
     _apply_extreme_shape_injection,
