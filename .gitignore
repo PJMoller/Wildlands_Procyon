@@ -11,6 +11,7 @@ data/processed/*
 data/database/*
 data/predictions/*
 data/models/*
+data/predictions/img/*
 
 !data/raw/.gitkeep
 !data/processed/.gitkeep
@@ -18,6 +19,7 @@ data/models/*
 !data/predictions/.gitkeep
 !data/database/database_sample.db
 !data/models/.gitkeep
+!data/predictions/img/.gitkeep
 
 tests/visulization/charts/*
 !tests/visulization/charts/.gitkeep
