@@ -1,4 +1,4 @@
-name: Run Python Tests
+name: Daily pipeline + Tests
 
 on:
   push:
@@ -6,8 +6,11 @@ on:
       - '**'
   workflow_dispatch:
 
+  schedule:
+    - cron: '0 7 * * *'  # Everyday at 08:00 GMT+1 In winter it's 09:00
+
 jobs:
-  test:
+  pipeline:
     runs-on: ubuntu-latest
 
     steps:
@@ -24,5 +27,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: run unit test data
-        run: pytest -v tests/test_data_cleaning.py
+      - name: run unit tests
+        run: |
+          pytest -v tests/test_data_cleaning.py
+
+      - name: Run daily pipeline
+        run: |
+          python run_daily_pipeline.py

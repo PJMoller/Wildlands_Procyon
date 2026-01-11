@@ -159,7 +159,17 @@ async function loadUploadStatus() {
     const statusEl = document.getElementById("upload-status");
     if (!statusEl) return;
 
-    statusEl.innerHTML = "<p>Upload system ready</p>";
+    const res = await fetch("/api/upload-status");
+    const data = await res.json();
+
+    if (!data.files.length) {
+        statusEl.innerHTML = `<p>${translations.no_files}</p>`;
+    } else {
+        statusEl.innerHTML = `
+            <p><strong>${translations.uploaded_files}</strong></p>
+            <ul>${data.files.map(f => `<li>${f}</li>`).join("")}</ul>
+        `;
+    }
 }
 
 

@@ -648,8 +648,28 @@ h2 {
     text-align: center;
 }
 
-.weather-info {
-    color: var(--text-secondary);
-    font-size: 0.9rem;
-    margin-top: 6px;
+/* language style */
+.language-selector {
+    position: absolute;
+    top: 30px;
+    right: 60px;
+    display: flex;
+    gap: 15px;
+}
+
+.language-selector img {
+    width: 40px;
+    height: 30px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.language-selector img:hover {
+    transform: scale(1.1);
+}
+
+.language-selector a {
+    display: flex;
+    align-items: center;
 }
