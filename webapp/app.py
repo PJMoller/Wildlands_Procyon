@@ -30,11 +30,11 @@ app.config['LANGUAGES'] = {
 }
 
 app.config['BABEL_TRANSLATION_DIRECTORIES'] = 'translations'
-
 app.secret_key = os.environ.get("SECRET_KEY", "fallback_dev_key")
 
 babel = Babel(app)
 
+# ------------------ DATABASE ------------------
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
@@ -62,16 +62,14 @@ def check_user(username, password):
     conn.close()
     return user
 
+# ------------------ LANGUAGE ------------------
 @app.route('/set-language/<language>')
 def set_language(language):
-    print(f"Language selected: {language}")
     session['language'] = language
-    print(f"Session language: {session.get('language')}")
     return redirect(request.referrer or '/')
 
 def get_locale():
     locale = session.get('language')
-    print(f"Current session language: {locale}")
     if locale:
         return locale
     return request.accept_languages.best_match(app.config['LANGUAGES'].keys()) or 'en'
@@ -80,10 +78,9 @@ babel.init_app(app, locale_selector=get_locale)
 
 @app.context_processor
 def inject_conf():
-    return {
-        'get_locale': get_locale
-    }
+    return {'get_locale': get_locale}
 
+# ------------------ AUTH ------------------
 @app.route("/login", methods=["GET"])
 def login_page():
     return render_template("Loginpage.html")
@@ -102,7 +99,7 @@ def load_df():
     files = [f for f in PREDICTIONS_DIR.iterdir() if f.is_file()]
     if not files:
         return pd.DataFrame(columns=["date", "total_visitors"])
-        
+
     latest_file = max(files, key=lambda f: f.stat().st_mtime)
     raw = pd.read_csv(latest_file, low_memory=False)
     raw["date"] = pd.to_datetime(raw["date"]).dt.normalize()
@@ -131,6 +128,53 @@ def get_df():
         df = load_df()
     return df
 
+# ------------------ EVENTS (ADDED, ISOLATED) ------------------
+def load_upcoming_events(limit=2):
+    files = [f for f in PREDICTIONS_DIR.iterdir()
+             if f.is_file() and "historical_only" in f.name]
+
+    if not files:
+        return []
+
+    latest = max(files, key=lambda f: f.stat().st_mtime)
+    df_events = pd.read_csv(latest, low_memory=False)
+
+    df_events["date"] = pd.to_datetime(df_events["date"]).dt.normalize()
+    today = pd.Timestamp.today().normalize()
+
+    df_events = df_events[
+        (df_events["event_name"] != "no_event") &
+        (df_events["date"] >= today)
+    ]
+
+    if df_events.empty:
+        return []
+
+    daily = (
+        df_events
+        .groupby(["date", "event_name"], as_index=False)
+        .agg(event_impact=("event_impact", "sum"))
+        .sort_values("date")
+    )
+
+    events = []
+    for _, r in daily.iterrows():
+        impact = float(r["event_impact"])
+        events.append({
+            "date": r["date"].strftime("%Y-%m-%d"),
+            "event_name": r["event_name"].replace("_", " ").title(),
+            "impact": int(round(impact)),
+            "status": "good" if impact > 0 else "bad"
+        })
+        if len(events) == limit:
+            break
+
+    return events
+
+@app.route("/api/events")
+def api_events():
+    return jsonify({"events": load_upcoming_events()})
+
 # ------------------ PAGES ------------------
 @app.route("/")
 def home():
@@ -149,9 +193,7 @@ def slider():
 def visitors():
     df_local = get_df()
     range_param = request.args.get("range", "week")
-    start_date_str = request.args.get("date")
-
-    start_date = pd.to_datetime(start_date_str).normalize() if start_date_str else pd.Timestamp.today().normalize()
+    start_date = pd.to_datetime(request.args.get("date")).normalize()
 
     if range_param == "week":
         end_date = start_date + pd.Timedelta(days=6)
@@ -162,36 +204,31 @@ def visitors():
     else:
         end_date = start_date + pd.Timedelta(days=6)
 
-    mask = (df_local["date"] >= start_date) & (df_local["date"] <= end_date)
-    df_filtered = df_local.loc[mask]
+    df_f = df_local[(df_local["date"] >= start_date) & (df_local["date"] <= end_date)]
 
     return jsonify({
-        "dates": df_filtered["date"].dt.strftime("%Y-%m-%d").tolist(),
-        "visitors": df_filtered["total_visitors"].tolist()
+        "dates": df_f["date"].dt.strftime("%Y-%m-%d").tolist(),
+        "visitors": df_f["total_visitors"].tolist()
     })
 
 @app.route("/api/today")
 def today():
     df_local = get_df()
-    today_date = pd.Timestamp.today().normalize()
-    tomorrow_date = today_date + pd.Timedelta(days=1)
+    today = pd.Timestamp.today().normalize()
+    tomorrow = today + pd.Timedelta(days=1)
 
-    def get_info(d):
+    def row(d):
         r = df_local[df_local["date"] == d]
         if r.empty:
             return {"visitors": 0, "temperature": None, "rain": None}
-
-        row = r.iloc[0]
+        r = r.iloc[0]
         return {
-            "visitors": int(row["total_visitors"]),
-            "temperature": round(float(row.get("temperature", 0)), 1),
-            "rain": round(float(row.get("total_rain", 0)), 1)
+            "visitors": int(r["total_visitors"]),
+            "temperature": round(float(r.get("temperature", 0)), 1),
+            "rain": round(float(r.get("total_rain", 0)), 1)
         }
 
-    return jsonify({
-        "today": get_info(today_date),
-        "tomorrow": get_info(tomorrow_date)
-    })
+    return jsonify({"today": row(today), "tomorrow": row(tomorrow)})
 
 @app.route("/api/day-tickets")
 def day_tickets():
@@ -202,15 +239,9 @@ def day_tickets():
         return jsonify({})
 
     row = row.iloc[0]
-    tickets = {
-        c.replace("ticket_", ""): int(row[c])
-        for c in row.index if c.startswith("ticket_")
-    }
+    tickets = {c.replace("ticket_", ""): int(row[c]) for c in row.index if c.startswith("ticket_")}
 
-    return jsonify({
-        "tickets": tickets,
-        "total_visitors": int(row["total_visitors"])
-    })
+    return jsonify({"tickets": tickets, "total_visitors": int(row["total_visitors"])})
 
 # ------------------ FILE UPLOAD ------------------
 def allowed_file(filename):
@@ -235,29 +266,20 @@ def slider_predict():
         base_row = df_local[df_local["date"] == date_obj]
         baseline = int(base_row["total_visitors"].iloc[0]) if not base_row.empty else 0
 
-        r_morning = float(payload.get("rain_morning", 0.0))
-        r_afternoon = float(payload.get("rain_afternoon", 0.0))
-        p_morning = float(payload.get("precip_morning", 0.0))
-        p_afternoon = float(payload.get("precip_afternoon", 0.0))
-
         adjusted_total = predict_single_day(
             input_date=date_str,
             temperature=float(payload.get("temperature", 15.0)),
-            rain_morning=r_morning,
-            rain_afternoon=r_afternoon,
-            precip_morning=p_morning,
-            precip_afternoon=p_afternoon,
+            rain_morning=float(payload.get("rain_morning", 0.0)),
+            rain_afternoon=float(payload.get("rain_afternoon", 0.0)),
+            precip_morning=float(payload.get("precip_morning", 0.0)),
+            precip_afternoon=float(payload.get("precip_afternoon", 0.0)),
             event_name=payload.get("event_name"),
             holiday_name=payload.get("holiday_name"),
         )
 
-        return jsonify({
-            "baseline": baseline,
-            "adjusted": adjusted_total
-        })
+        return jsonify({"baseline": baseline, "adjusted": adjusted_total})
 
     except Exception as e:
-        print(f"Error in slider_predict: {e}")
         return jsonify({"error": str(e)}), 500
 
 # ------------------ RUN ------------------
