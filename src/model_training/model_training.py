@@ -18,6 +18,8 @@ from sklearn.base import clone
 from sklearn.metrics import make_scorer
 from paths import MODELS_DIR, PROCESSED_DIR, PREDICTIONS_DIR, IMG_DIR
 
+os.makedirs(IMG_DIR, exist_ok=True)
+
 def wape_score(y_true, y_pred):
     if np.sum(y_true) == 0:
         return 0.0
