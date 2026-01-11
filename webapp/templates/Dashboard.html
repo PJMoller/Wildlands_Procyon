@@ -42,25 +42,12 @@
         </div>
     </div>
 
+    <!-- ONLY THIS WIDGET CHANGED -->
     <div class="widget events">
         <h3>{{ _('Events (Impact)') }}</h3>
-
-        <div class="event good">
-            <span class="event-status">{{ _('GOOD!') }}</span>
-            <div class="event-content">
-                <p class="event-title">WILDnights, Dec 20 - Jan 4</p>
-                <p class="event-description">{{ _('Entertainment') }}</p>
-            </div>
-        </div>
-
-        <div class="event bad">
-            <span class="event-status">{{ _('BAD!') }}</span>
-            <div class="event-content">
-                <p class="event-title">Exclusive Evening, Jul 28</p>
-                <p class="event-description">{{ _('Entertainment') }}</p>
-            </div>
-        </div>
+        <div id="events-container"></div>
     </div>
+    <!-- END CHANGE -->
 
     <div class="widget attendance-chart">
         <h3>{{ _('Expected Attendance') }}</h3>
@@ -124,7 +111,7 @@
     const translations = {
         no_files: "{{ _('No uploaded files found') }}",
         uploaded_files: "{{ _('Uploaded files:') }}"
-    };
+    }
 </script>
 </body>
 </html>

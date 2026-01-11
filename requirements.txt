@@ -11,3 +11,4 @@ pytest
 gunicorn
 xgboost
 lightgbm
+flask_babel

@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadTodayWidgets();
     loadDaySummary(startDateInput.value);
     loadUploadStatus();
+    loadEvents(); // ✅ ADDED
 
     chartButtons.forEach(btn => {
         btn.addEventListener('click', () => {
@@ -26,6 +27,37 @@ document.addEventListener('DOMContentLoaded', () => {
         loadDaySummary(startDateInput.value);
     });
 });
+
+
+// ---------------- EVENTS (ADDED) ----------------
+async function loadEvents() {
+    const container = document.getElementById("events-container");
+    if (!container) return;
+
+    const res = await fetch("/api/events");
+    const data = await res.json();
+
+    container.innerHTML = "";
+
+    if (!data.events.length) {
+        container.innerHTML = "<p>No upcoming events</p>";
+        return;
+    }
+
+    data.events.forEach(e => {
+        container.innerHTML += `
+            <div class="event ${e.status}">
+                <span class="event-status">${e.status.toUpperCase()}!</span>
+                <div class="event-content">
+                    <p class="event-title">${e.event_name}, ${e.date}</p>
+                    <p class="event-description">
+                        Impact: ${e.impact > 0 ? "+" : ""}${e.impact} visitors
+                    </p>
+                </div>
+            </div>
+        `;
+    });
+}
 
 
 // ---------------- WEATHER ----------------
