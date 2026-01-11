@@ -16,7 +16,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from sklearn.base import clone
 from sklearn.metrics import make_scorer
-from paths import MODELS_DIR, PROCESSED_DIR, PREDICTIONS_DIR
+from paths import MODELS_DIR, PROCESSED_DIR, PREDICTIONS_DIR, IMG_DIR
 
 def wape_score(y_true, y_pred):
     if np.sum(y_true) == 0:
@@ -212,29 +212,9 @@ def process_data():
     
     # --- Train Global Model ---
     print("\nTraining global LightGBM model...")
-    # 1 = increasing, -1 = decreasing, 0 = no constraint
-    monotone_constraints = [0] * len(feature_cols)
-
-    negative_features = [
-    "rain",
-    "rain_morning",
-    "rain_afternoon",
-    "precipitation",
-    "precip_morning", 
-    "precip_afternoon"
-    ]
-
-
-    print("--- Applying Monotonic Constraints ---")
-    for col_name in negative_features:
-        if col_name in feature_cols:
-            idx = feature_cols.index(col_name)
-            monotone_constraints[idx] = -1  # Force negative correlation
-            print(f"  -> Forced negative constraint on: {col_name}")
+    
     # Define the model
-
     model = lgb.LGBMRegressor(
-        monotone_constraints=monotone_constraints,
         objective='regression',
         metric='mae',
         n_estimators=1000,
@@ -315,7 +295,7 @@ def process_data():
     plt.ylabel('Feature')
     plt.gca().invert_yaxis()
     plt.tight_layout()
-    plt.savefig(PROCESSED_DIR / "feature_importances.png", dpi=300)
+    plt.savefig(IMG_DIR / "feature_importances.png", dpi=300)
     plt.close()
     
     # Save the global model
