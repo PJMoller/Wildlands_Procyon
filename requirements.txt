@@ -12,3 +12,4 @@ gunicorn
 xgboost
 lightgbm
 flask_babel
+matplotlib
