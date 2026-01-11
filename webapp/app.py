@@ -1,4 +1,5 @@
 from flask import Flask, render_template, jsonify, request, redirect, url_for, session
+from flask_babel import Babel, gettext
 import pandas as pd
 import os
 from werkzeug.utils import secure_filename
@@ -23,9 +24,17 @@ files = [f for f in PREDICTIONS_DIR.iterdir() if f.is_file()]
 latest_file = max(files, key=lambda f: f.stat().st_mtime)
 
 app = Flask(__name__)
+app.config['LANGUAGES'] = {
+    'en': 'English',
+    'nl': 'Dutch',
+    'de': 'German'
+}
+
+app.config['BABEL_TRANSLATION_DIRECTORIES'] = 'translations'
 
 app.secret_key = os.environ.get("SECRET_KEY", "fallback_dev_key")
 
+babel = Babel(app)
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)
@@ -51,6 +60,28 @@ def check_user(username, password):
     user = cur.fetchone()
     conn.close()
     return user
+
+@app.route('/set-language/<language>')
+def set_language(language):
+    print(f"Language selected: {language}")
+    session['language'] = language
+    print(f"Session language: {session.get('language')}")
+    return redirect(request.referrer or '/')
+
+def get_locale():
+    locale = session.get('language')
+    print(f"Current session language: {locale}")
+    if locale:
+        return locale
+    return request.accept_languages.best_match(app.config['LANGUAGES'].keys()) or 'en'
+
+babel.init_app(app, locale_selector=get_locale)
+
+@app.context_processor
+def inject_conf():
+    return {
+        'get_locale': get_locale
+    }
 
 @app.route("/login", methods=["GET"])
 def login_page():
@@ -105,13 +136,13 @@ saved_slider_values = {}
 def home():
     if "user" not in session:
         return redirect(url_for("login_page"))
-    return render_template("Dashboard.html")
+    return render_template("Dashboard.html", _=gettext)
 
 @app.route("/slider")
 def slider():
     if "user" not in session:
         return redirect(url_for("login_page"))
-    return render_template("Slider.html")
+    return render_template("Slider.html", _=gettext)
 
 @app.route("/api/visitors")
 def get_visitors():

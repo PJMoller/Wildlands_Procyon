@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ get_locale() }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wildlands Dashboard</title>
+    <title>{{ _('Wildlands Dashboard') }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 </head>
@@ -12,57 +12,69 @@
 
 <div class="container">
 
+<div class="language-selector">
+    <a href="{{ url_for('set_language', language='en') }}" title="English">
+        <img src="{{ url_for('static', filename='flags/gb.svg') }}" alt="English">
+    </a> 
+    <a href="{{ url_for('set_language', language='nl') }}" title="Dutch">
+        <img src="{{ url_for('static', filename='flags/nl.svg') }}" alt="Dutch">
+    </a>
+    <a href="{{ url_for('set_language', language='de') }}" title="German">
+        <img src="{{ url_for('static', filename='flags/de.svg') }}" alt="German">
+    </a>
+</div>
+
     <div class="widget current-day">
-        <h3>Current day</h3>
+        <h3>{{ _('Current day') }}</h3>
         <div class="content-box">
             <p></p>
-            <p>No event</p>
-            <p class="visitor-count">0 Visitors</p>
+            <p>{{ _('No event') }}</p>
+            <p class="visitor-count">{{ _('0 Visitors') }}</p>
         </div>
     </div>
 
     <div class="widget tomorrow">
-        <h3>Tomorrow</h3>
+        <h3>{{ _('Tomorrow') }}</h3>
         <div class="content-box">
             <p></p>
-            <p>No event</p>
-            <p class="visitor-count">0 Visitors</p>
+            <p>{{ _('No event') }}</p>
+            <p class="visitor-count">{{ _('0 Visitors') }}</p>
         </div>
     </div>
 
     <div class="widget events">
-        <h3>Events (Impact)</h3>
+        <h3>{{ _('Events (Impact)') }}</h3>
 
         <div class="event good">
-            <span class="event-status">GOOD!</span>
+            <span class="event-status">{{ _('GOOD!') }}</span>
             <div class="event-content">
                 <p class="event-title">WILDnights, Dec 20 - Jan 4</p>
-                <p class="event-description">Entertainment</p>
+                <p class="event-description">{{ _('Entertainment') }}</p>
             </div>
         </div>
 
         <div class="event bad">
-            <span class="event-status">BAD!</span>
+            <span class="event-status">{{ _('BAD!') }}</span>
             <div class="event-content">
                 <p class="event-title">Exclusive Evening, Jul 28</p>
-                <p class="event-description">Entertainment</p>
+                <p class="event-description">{{ _('Entertainment') }}</p>
             </div>
         </div>
     </div>
 
     <div class="widget attendance-chart">
-        <h3>Expected Attendance</h3>
+        <h3>{{ _('Expected Attendance') }}</h3>
 
         <div class="content-box">
             <div class="chart-controls">
-                <label>Select date:</label>
+                <label>{{ _('Select date:') }}</label>
                 <input type="date" id="start-date">
             </div>
 
             <div class="chart-options">
-                <button data-range="week" class="active">Week</button>
-                <button data-range="month">Month</button>
-                <button data-range="year">Year</button>
+                <button data-range="week" class="active">{{ _('Week') }}</button>
+                <button data-range="month">{{ _('Month') }}</button>
+                <button data-range="year">{{ _('Year') }}</button>
             </div>
 
             <div id="attendanceChart" style="width:100%; height:250px;"></div>
@@ -70,42 +82,49 @@
     </div>
 
     <div class="widget forecast">
-        <h3>Information on selected day</h3>
+         <h3>{{ _('Information on selected day') }}</h3>
 
         <div class="content-box forecast-box">
-            <p class="visitor-count">0 visitors</p>
+            <p class="visitor-count">{{ _('0 visitors') }}</p>
             <div id="pieChart" style="width:100%; height:220px;"></div>
         </div>
     </div>
 
   <div class="widget upload-widget">
-    <h3>Upload Data</h3>
+    <h3>{{ _('Upload Data') }}</h3>
     <div class="content-box link-box">
         <form action="{{ url_for('upload_file') }}" method="POST" enctype="multipart/form-data" class="upload-form">
             <label class="file-label">
                 <input type="file" name="file" accept=".csv, .xlsx, .xls" required hidden>
-                Choose file
+                {{ _('Choose file') }}
             </label>
 
-            <span class="file-name">No file chosen</span>
-            <input type="submit" value="Upload" class="upload-btn">
+            <span class="file-name">{{ _('No file chosen') }}</span>
+            <input type="submit" value="{{ _('Upload') }}" class="upload-btn">
         </form>
 
         <div id="upload-status" class="upload-status">
-            Checking for uploaded files...
+            {{ _('Checking for uploaded files...') }}
         </div>
     </div>
 </div>
 
     <div class="widget manual-link">
-        <h3>Manual Controls</h3>
+        <h3>{{ _('Manual Controls') }}</h3>
         <div class="content-box link-box">
-            <a href="{{ url_for('slider') }}" class="manual-button">Slider Page</a>
+            <a href="{{ url_for('slider') }}" class="manual-button">{{ _('Slider Page') }}</a>
         </div>
     </div>
 
 </div>
 
 <script src="{{ url_for('static', filename='script.js') }}"></script>
+
+<script>
+    const translations = {
+        no_files: "{{ _('No uploaded files found') }}",
+        uploaded_files: "{{ _('Uploaded files:') }}"
+    };
+</script>
 </body>
 </html>

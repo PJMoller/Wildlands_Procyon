@@ -167,10 +167,10 @@ async function loadUploadStatus() {
     const data = await res.json();
 
     if (!data.files.length) {
-        statusEl.innerHTML = "<p>No uploaded files found</p>";
+        statusEl.innerHTML = `<p>${translations.no_files}</p>`;
     } else {
         statusEl.innerHTML = `
-            <p><strong>Uploaded files:</strong></p>
+            <p><strong>${translations.uploaded_files}</strong></p>
             <ul>${data.files.map(f => `<li>${f}</li>`).join("")}</ul>
         `;
     }

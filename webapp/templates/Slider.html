@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ get_locale() }}">
 <head>
     <meta charset="UTF-8">
-    <title>Slider Page</title>
+    <title>{{ _('Slider Page') }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -12,19 +12,19 @@
 
     <!-- LEFT: VARIABLES -->
     <div class="widget current-day">
-        <h3>Adjust Variables</h3>
+        <h3>{{ _('Adjust Variables') }}</h3>
         <div class="content-box">
 
             <!-- DATE -->
             <div class="variable">
-                <label for="date">Date</label>
+                <label for="date">{{ _('Date') }}</label>
                 <input type="date" id="date">
             </div>
 
             <!-- RAIN -->
             <div class="variable">
                 <div class="variable-top">
-                    <label for="rain">Rainfall</label>
+                    <label for="rain">{{ _('Rainfall') }}</label>
                     <input type="number" id="rain-num" value="0" step="0.5" class="variable-value"> 
                     <span>mm</span>
                 </div>
@@ -36,7 +36,7 @@
             <!-- TEMP -->
             <div class="variable">
                 <div class="variable-top">
-                    <label for="temp">Temperature</label>
+                    <label for="temp">{{ _('Temperature') }}</label>
                     <input type="number" id="temp-num" value="15" class="variable-value">
                     <span>°C</span>
                 </div>
@@ -50,7 +50,7 @@
 
     <!-- RIGHT: GRAPH -->
     <div class="widget events">
-        <h3>Prediction Comparison</h3>
+         <h3>{{ _('Prediction Comparison') }}</h3>
         <div class="content-box">
             <canvas id="comparisonChart" height="220"></canvas>
         </div>
@@ -59,16 +59,16 @@
     <!-- RESULT -->
     <div class="widget forecast">
         <div class="content-box forecast-box">
-            <button class="confirm-button">Calculate</button>
+            <button class="confirm-button">{{ _('Calculate') }}</button>
             <p class="visitor-count" id="result">—</p>
-            <p class="forecast-note">Adjusted forecast</p>
+            <p class="forecast-note">{{ _('Adjusted forecast') }}</p>
         </div>
     </div>
 
     <!-- BACK -->
     <div class="widget manual-link">
         <div class="content-box link-box">
-            <a href="{{ url_for('home') }}" class="manual-button">Dashboard</a>
+            <a href="{{ url_for('home') }}" class="manual-button">{{ _('Dashboard') }}</a>
         </div>
     </div>
 
