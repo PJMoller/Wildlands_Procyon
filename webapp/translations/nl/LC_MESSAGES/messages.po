@@ -34,7 +34,7 @@ msgid "0 Visitors"
 msgstr "0 Bezoekers"
 
 msgid "Events (Impact)"
-msgstr "Gebeurtenissen (Impact)"
+msgstr "Evenementen (Impact)"
 
 msgid "GOOD!"
 msgstr "GOED!"
@@ -116,3 +116,28 @@ msgstr "Dashboard"
 
 msgid "Upload"
 msgstr "Uploaden"
+
+msgid "Holiday Override"
+msgstr "Feestdag Overschrijven"
+
+msgid "Event Override"
+msgstr "Evenement Overschrijven"
+
+msgid "Rain morning"
+msgstr "Regen Ochtend"
+
+msgid "Rain Afternoon"
+msgstr "Regen Middag"
+
+msgid "Precip Morning"
+msgstr "Neerslag Ochtend"
+
+msgid "Precip Afternoon"
+msgstr "Neerslag Middag"
+
+msgid "Adjusted forecast"
+msgstr "Aangepaste voorspelling"
+
+msgid "None"
+msgstr "Geen"
+
