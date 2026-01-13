@@ -189,7 +189,10 @@ To stop the container:
 
 ## Troubleshooting
 #### Database Issues
-If you encounter database errors, delete webapp/database.db and restart the application to reinitialize the database.
+If you encounter login related errors:
+* Make sure you have and entered the correct username and password. You should have recieved this in the folder of the artefact.
+* Make sure to have the proper database.db file in the webapp folder. You should have recieved this in the folder of the artefact. This should be a one time thing.
+* Make sure to have set your secret key in the terminal. You should have recieved this in the folder of the artefact. This should be a one time thing.
 #### Missing Data Files
 Ensure all required files in data/raw/ are correctly named and formatted before running the data cleaning script.
 #### Port Already in Use
