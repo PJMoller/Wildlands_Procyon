@@ -4,29 +4,37 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Wild Lands - Login</title>
-    <link rel="stylesheet" href="../static/style.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body class="login-page">
 
     <div class="bg-layer"></div>
     <div class="overlay"></div>
-<div >
-    <h2>WildLands Portal</h2>
-    <div class="login-box">
-        <form action="/login" method="POST">
-            <div class="input-group">
-                <input name="username" type="text" placeholder="Username or Email" class="input-field">
-            </div>
 
-            <div class="input-group">
-                <input name="password" type="password" placeholder="Password" class="input-field">
-            </div>
+    <div>
+        <h2>WildLands Portal</h2>
 
-            <button type="submit" class="login-btn">Log In</button>
-        </form>
+        <div class="login-box">
+
+            {% if error %}
+                <div class="login-error">
+                    {{ error }}
+                </div>
+            {% endif %}
+
+            <form action="/login" method="POST">
+                <div class="input-group">
+                    <input name="username" type="text" placeholder="Username or Email" class="input-field" required>
+                </div>
+
+                <div class="input-group">
+                    <input name="password" type="password" placeholder="Password" class="input-field" required>
+                </div>
+
+                <button type="submit" class="login-btn">Log In</button>
+            </form>
+        </div>
     </div>
-</div>
+
 </body>
 </html>
-
-

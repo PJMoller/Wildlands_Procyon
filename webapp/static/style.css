@@ -700,3 +700,26 @@ h2 {
     border: 1px solid #ccc;
     background-color: white;
 }
+.loading-text {
+    margin-top: 15px;
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    animation: pulse 1.4s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 0.3; }
+    50% { opacity: 1; }
+    100% { opacity: 0.3; }
+}
+
+.login-error {
+    background: rgba(244, 67, 54, 0.15);
+    border: 1px solid #F44336;
+    color: #ffb3b3;
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    font-size: 0.9rem;
+}
+

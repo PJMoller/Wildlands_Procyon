@@ -182,7 +182,18 @@
             <p class="forecast-note">{{ _('Adjusted forecast') }}</p>
         </div>
     </div>
+    <div class="widget forecast">
+        <div class="content-box forecast-box">
+            <button class="confirm-button">{{ _('Calculate') }}</button>
 
+            <p id="loading" style="display:none;">
+                ⏳ Calculating prediction, please wait...
+            </p>
+
+            <p class="visitor-count" id="result">—</p>
+            <p class="forecast-note">{{ _('Adjusted forecast') }}</p>
+        </div>
+    </div>
     <div class="widget manual-link">
         <div class="content-box link-box">
             <a href="{{ url_for('home') }}" class="manual-button">{{ _('Dashboard') }}</a>
@@ -219,21 +230,25 @@ const chart = new Chart(
 );
 
 document.querySelector(".confirm-button").addEventListener("click", () => {
+    const button = document.querySelector(".confirm-button");
+    const loading = document.getElementById("loading");
+    const result = document.getElementById("result");
+
     const payload = {
         date: document.getElementById("date").value,
         temperature: document.getElementById("temp").value,
-        
         holiday_name: document.getElementById("holiday_name").value,
         event_name: document.getElementById("event_name").value,
-
         rain_morning: document.getElementById("rain_morning").value,
         rain_afternoon: document.getElementById("rain_afternoon").value,
-
         precip_morning: document.getElementById("precip_morning").value,
         precip_afternoon: document.getElementById("precip_afternoon").value
     };
 
-    console.log("Sending payload:", payload);
+    // UI state
+    button.disabled = true;
+    loading.style.display = "block";
+    result.textContent = "—";
 
     fetch("/api/slider-predict", {
         method: "POST",
@@ -242,14 +257,20 @@ document.querySelector(".confirm-button").addEventListener("click", () => {
     })
     .then(res => res.json())
     .then(data => {
-        document.getElementById("result").textContent =
-            data.adjusted.toLocaleString() + " visitors";
-
+        result.textContent = data.adjusted.toLocaleString() + " visitors";
         chart.data.datasets[0].data = [data.baseline];
         chart.data.datasets[1].data = [data.adjusted];
         chart.update();
+    })
+    .catch(() => {
+        result.textContent = "Error calculating prediction";
+    })
+    .finally(() => {
+        loading.style.display = "none";
+        button.disabled = false;
     });
 });
+
 </script>
 
 </body>
