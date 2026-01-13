@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 
 # Import paths
-from paths import PREDICTIONS_DIR
+from paths import PREDICTIONS_DIR, IMG_DIR
 
 def visualize_forecast():
     """Create comprehensive visualizations of the 365-day forecast."""
@@ -17,6 +17,7 @@ def visualize_forecast():
         return
 
     forecast_file = forecast_files[0]
+    # forecast_file = PREDICTIONS_DIR / "forecast_365days_from_20260101_20260113_1725.csv"
     print(f"Visualizing: {forecast_file.name}")
 
     # Load forecast data
@@ -198,7 +199,7 @@ Average: {int(peak_season_avg):,}
     plt.tight_layout()
 
     # Save the figure
-    output_file = PREDICTIONS_DIR / f"forecast_visualization_{pd.Timestamp.now().strftime('%Y%m%d_%H%M')}.png"
+    output_file = IMG_DIR / f"forecast_visualization_{pd.Timestamp.now().strftime('%Y%m%d_%H%M')}.png"
     plt.savefig(output_file, dpi=300, bbox_inches='tight')
     print(f"\nVisualization saved: {output_file}")
 
