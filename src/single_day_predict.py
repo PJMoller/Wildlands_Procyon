@@ -2,16 +2,21 @@ import os
 import pickle
 import warnings
 from datetime import datetime, timedelta
-
+import sys
 import numpy as np
 import pandas as pd
+
+# Add project root to path
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 
 warnings.filterwarnings("ignore")
 
 # =============================================================================
 # PATHS CONFIGURATION
 # =============================================================================
-from paths import (
+from src.paths import (
     PREDICTIONS_DIR,
     PROCESSED_DIR,
     MODELS_DIR,
@@ -392,4 +397,5 @@ def predict_single_day(
         scaled=[(t,f,v*modifier,m) for t,f,v,m in scaled]
     
     total_sales=sum(int(round(v)) for _,_,v,_ in scaled)
+    print("returned total_sales")
     return total_sales

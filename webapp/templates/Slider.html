@@ -175,25 +175,24 @@
         </div>
     </div>
 
-    <div class="widget forecast">
+    <!-- <div class="widget forecast">
         <div class="content-box forecast-box">
             <button class="confirm-button">{{ _('Calculate') }}</button>
             <p class="visitor-count" id="result">—</p>
             <p class="forecast-note">{{ _('Adjusted forecast') }}</p>
         </div>
-    </div>
+    </div> -->
     <div class="widget forecast">
         <div class="content-box forecast-box">
             <button class="confirm-button">{{ _('Calculate') }}</button>
-
             <p id="loading" style="display:none;">
-                ⏳ Calculating prediction, please wait...
+                Calculating prediction, please wait...
             </p>
-
             <p class="visitor-count" id="result">—</p>
             <p class="forecast-note">{{ _('Adjusted forecast') }}</p>
         </div>
     </div>
+    
     <div class="widget manual-link">
         <div class="content-box link-box">
             <a href="{{ url_for('home') }}" class="manual-button">{{ _('Dashboard') }}</a>

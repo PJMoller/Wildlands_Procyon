@@ -5,7 +5,6 @@ import os
 from werkzeug.utils import secure_filename
 import sqlite3
 import hashlib
-from paths import PREDICTIONS_DIR
 
 # ------------------ PATH FIX FOR ML ------------------
 import sys
@@ -15,11 +14,18 @@ from src.single_day_predict import predict_single_day
 
 # ------------------ PATHS ------------------
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(APP_DIR, "database.db")
 UPLOAD_FOLDER = os.path.join(PROJECT_ROOT, "data", "upload")
 ALLOWED_EXTENSIONS = {"csv", "xlsx", "xls"}
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+##########################################################################################################
+# paths.py import, leave this here, else python top to bottom protocol will mess up the paths for app.py #
+##########################################################################################################
+from src.paths import PREDICTIONS_DIR
 
 # ------------------ FLASK ------------------
 app = Flask(__name__)
@@ -258,6 +264,8 @@ def upload_file():
 # ------------------ SLIDER ML ------------------
 @app.route("/api/slider-predict", methods=["POST"])
 def slider_predict():
+    print("=== SLIDER PREDICT CALLED ===")
+    print(f"Request data: {request.get_json()}")
     try:
         payload = request.get_json()
         date_str = payload.get("date")

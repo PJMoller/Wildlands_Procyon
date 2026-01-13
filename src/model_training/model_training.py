@@ -1,3 +1,12 @@
+import os
+import sys
+
+# Add project root to path
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
 from sklearn.model_selection import train_test_split, TimeSeriesSplit, RandomizedSearchCV,cross_val_predict
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.svm import SVR
@@ -11,12 +20,10 @@ import pandas as pd
 import pickle
 import matplotlib.pyplot as plt
 import numpy as np
-import os
-import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from sklearn.base import clone
 from sklearn.metrics import make_scorer
-from paths import MODELS_DIR, PROCESSED_DIR, PREDICTIONS_DIR, IMG_DIR
+from src.paths import MODELS_DIR, PROCESSED_DIR, PREDICTIONS_DIR, IMG_DIR
 
 os.makedirs(IMG_DIR, exist_ok=True)
 

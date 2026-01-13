@@ -3,9 +3,16 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from pathlib import Path
 import numpy as np
+import sys
+import os
+
+# Add project root to path
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 
 # Import paths
-from paths import PREDICTIONS_DIR, IMG_DIR
+from src.paths import PREDICTIONS_DIR, IMG_DIR
 
 def visualize_forecast():
     """Create comprehensive visualizations of the 365-day forecast."""

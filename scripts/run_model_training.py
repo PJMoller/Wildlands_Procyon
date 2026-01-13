@@ -17,7 +17,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 # Import paths (from main folder) and data cleaning
-from paths import RAW_DIR, PROCESSED_DIR 
+from src.paths import RAW_DIR, PROCESSED_DIR 
 from src.model_training.model_training import process_data 
 
 # -> None is a type hint for tools like IDEs and static type checkers. 
