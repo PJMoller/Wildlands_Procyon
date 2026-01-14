@@ -63,7 +63,7 @@ def init_db():
 
     except Exception as e:
         DB_ERROR = (
-            "Database error: the database file is missing or cannot be accessed. "
+            "Database error: the database file is missing or an incorrect database file is installed. "
             "Please check the database configuration."
         )
 
