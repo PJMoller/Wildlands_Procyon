@@ -41,18 +41,31 @@ app.secret_key = os.environ.get("SECRET_KEY", "fallback_dev_key")
 babel = Babel(app)
 
 # ------------------ DATABASE ------------------
+DB_ERROR = None  
+
 def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL
+    global DB_ERROR
+    try:
+        if not os.path.exists(DB_PATH):
+            raise FileNotFoundError("Database file not found")
+
+        conn = sqlite3.connect(DB_PATH)
+        cur = conn.cursor()
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                password TEXT NOT NULL
+            )
+        """)
+        conn.commit()
+        conn.close()
+
+    except Exception as e:
+        DB_ERROR = (
+            "Database error: the database file is missing or cannot be accessed. "
+            "Please check the database configuration."
         )
-    """)
-    conn.commit()
-    conn.close()
 
 init_db()
 
@@ -89,14 +102,20 @@ def inject_conf():
 # ------------------ AUTH ------------------
 @app.route("/login", methods=["GET"])
 def login_page():
-    return render_template("Loginpage.html")
+    return render_template("Loginpage.html", error=DB_ERROR)
+
 
 @app.route("/login", methods=["POST"])
 def login_submit():
+    if DB_ERROR:
+        return render_template("Loginpage.html", error=DB_ERROR)
+
     if check_user(request.form["username"], request.form["password"]):
         session["user"] = request.form["username"]
         return redirect(url_for("home"))
+
     return render_template("Loginpage.html", error="Incorrect credentials")
+
 
 # ------------------ LOAD DASHBOARD DATA ------------------
 df = None
