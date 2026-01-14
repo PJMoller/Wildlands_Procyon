@@ -9,4 +9,6 @@ services:
     stop_signal: SIGTERM
     ports:
       - '5000:5000'
+    volumes:
+      - ./models:/app/models
     restart: unless-stopped
