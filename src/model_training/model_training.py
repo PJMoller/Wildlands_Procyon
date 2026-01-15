@@ -7,27 +7,21 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(_
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from sklearn.model_selection import train_test_split, TimeSeriesSplit, RandomizedSearchCV,cross_val_predict
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.svm import SVR
-from sklearn.linear_model import LinearRegression, Ridge, Lasso, ElasticNet
-from sklearn.preprocessing import PolynomialFeatures
+from sklearn.model_selection import TimeSeriesSplit, RandomizedSearchCV
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
-from sklearn.pipeline import Pipeline
-from xgboost import XGBRegressor
 import lightgbm as lgb
 import pandas as pd
 import pickle
 import matplotlib.pyplot as plt
 import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from sklearn.base import clone
 from sklearn.metrics import make_scorer
 from src.paths import MODELS_DIR, PROCESSED_DIR, PREDICTIONS_DIR, IMG_DIR
 
 os.makedirs(IMG_DIR, exist_ok=True)
 
 def wape_score(y_true, y_pred):
+    """Make our own WAPE scorer (negative for minimization)"""
     if np.sum(y_true) == 0:
         return 0.0
     
@@ -37,7 +31,7 @@ wape_scorer = make_scorer(wape_score, greater_is_better=True)
 
 
 def calculate_metrics(y_true, y_pred):
-    """Calculate comprehensive metrics"""
+    """Calculate all metrics"""
     mae = mean_absolute_error(y_true, y_pred)
     mse = mean_squared_error(y_true, y_pred)
     rmse = np.sqrt(mse)
@@ -163,15 +157,6 @@ def process_data():
     try:
         processed_df = pd.read_csv(PROCESSED_DIR / "processed_merge.csv")
         
-        # Convert holiday columns to proper format
-        holiday_cols = [c for c in processed_df.columns if c.startswith("holiday_")]
-        for c in holiday_cols:
-            processed_df[c] = (
-                processed_df[c]
-                .map({True: 1, False: 0, "True": 1, "False": 0}) # handle bool and string
-                .fillna(0)
-                .astype("int8")
-            )
         
     except Exception as e:
         print(f"Error loading processed data: {e}")
@@ -213,7 +198,7 @@ def process_data():
     recency_weights = 1 + (date_normalized / date_normalized.max()) * 0.5
     sample_weights *= recency_weights
     
-    # Weight subscription tickets higher (if they're more important)
+    # Weight subscription tickets higher
     subscription_mask = train_df['ticket_family'] == 'subscription'
     sample_weights[subscription_mask] *= 1.2
     
