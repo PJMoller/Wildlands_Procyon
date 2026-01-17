@@ -74,8 +74,8 @@ This script requires the following to be present:
 *	campaigns 2022-2026.xlsx
 *	Holidays 2022-2026 Netherlands and Germany.xlsx
 *	WeatherData2022_2023.csv
-*	processed_merge.csv (from Step 3)
-*	lgbm_model.pkl (from Step 4)
+*	processed_merge.csv (from Step 4)
+*	lgbm_model.pkl (from Step 5)
 *	Family-specific models and feature columns
 
 Expected output:
@@ -177,7 +177,9 @@ To stop the container:
     │   │    ├── Dashboard.html 
     │   │    ├── Loginpage.html 
     │   │    └── Slider.html 
+    │   ├── translations/          # Translations for babel
     │   ├── app.py                 # Main Flask application
+    │   ├── babel.cfg
     │   └──  database.db           # SQLite database
     ├── compose.yml                # Docker Compose configuration
     ├── Dockerfile                 # Container configuration

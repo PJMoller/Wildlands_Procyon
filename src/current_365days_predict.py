@@ -48,8 +48,8 @@ except Exception:
 
 def _compute_extreme_multipliers(processed_df: pd.DataFrame) -> dict:
     """
-    Calculates the intensity of peaks/troughs relative to a 'normal' baseline.
-    Used to inject shape into the forecast.
+    Calculates the intensity of peaks/lows relative to a 'normal' baseline.
+    Used to help enforce known extreme shapes in the forecast.
     """
     # 1. Establish a 'Normal' Baseline (Spring/Autumn)
     # Use MEDIAN to avoid outliers spiking the baseline
@@ -89,8 +89,8 @@ def _compute_extreme_multipliers(processed_df: pd.DataFrame) -> dict:
 
 def _get_adaptive_scaling_bounds(current_date: datetime, fam_wape: float) -> tuple[float, float]:
     """
-    Returns dynamic clipping bounds.
-    Loosens restrictions during known extreme periods so the model can reach peaks/troughs.
+    Returns dynamic clipping minimums and maximums.
+    Loosens restrictions during known extreme periods so the model can reach the peaks/lows.
     """
     month = current_date.month
     day = current_date.day
@@ -134,17 +134,17 @@ def _apply_extreme_shape_injection(pred: float, current_date: datetime, multipli
         ramp_progress = (day - 21) / 3.0
         
         # Target starts at 1.5x baseline (~2600) and ends at 3.0x baseline (~5200)
-        ramp_mult = 1.5 + (ramp_progress * 1.5) 
+        ramp_mult = 1.8 + (ramp_progress * 1.8) 
         
         ideal_val = baseline * ramp_mult
         
         if pred < ideal_val:
-            # Use moderate weight (0.7) to pull prediction up
+            # Use moderate weight to pull prediction up
             weight = 0.9
             injected = (pred * (1 - weight)) + (ideal_val * weight)
-            return min(injected, 6000.0) # Safety Cap for Pre-Xmas
+            return min(injected, 7000.0) # Safety Cap for Pre-Xmas
         
-    # Ramp (Dec 27 - 30)
+    # Peak (Dec 27 - 30)
     elif month == 12 and 26 <= day <= 30:
         # Progress 0.0 to 1.0 (Day 27=0.0, Day 30=1.0)
         progress = (day - 26) / 3.0
@@ -152,15 +152,15 @@ def _apply_extreme_shape_injection(pred: float, current_date: datetime, multipli
         
         target_mult = multipliers['xmas_multiplier']
         baseline = multipliers['baseline']
-        ideal_val = (baseline * target_mult) * 1.3
+        ideal_val = (baseline * target_mult)
         
         # Only inject if prediction is significantly lower
         if pred < ideal_val:
-            weight = 0.5 + (progress * 0.4) # Max weight 0.9
+            weight = 0.1 + (progress * 0.1) # Max weight 0.9
             injected = (pred * (1 - weight)) + (ideal_val * weight)
             
             # SAFETY CAP: Never exceed 110% of the calculated ideal
-            return min(injected, ideal_val * 1.1)
+            return min(injected, ideal_val * 1.0)
 
     return pred
 
@@ -407,7 +407,7 @@ def predict_next_365_days(forecast_days: int = 365, openmeteo_days: int = 14, ma
     if manual_growth_override:
         trend_ratio = manual_growth_override
     else:
-        trend_ratio = np.clip(trend_ratio, 0.70, 1.15)
+        trend_ratio = np.clip(trend_ratio, 0.70, 1.20)
 
     target_doy_map = {k: v * trend_ratio for k, v in raw_target_doy_map.items()}
     target_family_map = {k: v * trend_ratio for k, v in raw_target_family_map.items()}
@@ -524,7 +524,6 @@ def predict_next_365_days(forecast_days: int = 365, openmeteo_days: int = 14, ma
             fam_pred = per_family_tot[tfam]
             fam_sc = family_scaled_tot[tfam]
             val = pred * (fam_sc / fam_pred) if fam_pred > 0 else pred
-            # REMOVED SHAPE INJECTION FROM HERE
             scaled.append((tname, tfam, val, mused))
 
         # --- Global Scaling & Shape Injection ---
@@ -558,11 +557,11 @@ def predict_next_365_days(forecast_days: int = 365, openmeteo_days: int = 14, ma
             scaled = [(t, f, 0.0, m) for t, f, v, m in scaled]
 
         if is_weekend:
-             # Boost Saturday/Sunday by 1.2x
-             final_modifier = 1.2
+             # Boost Saturday/Sunday
+             final_modifier = 1.6
         else:
              # Suppress Weekdays by 0.9x to balance the total
-             final_modifier = 0.9
+             final_modifier = 0.7
              
         # Apply it to the daily total
         scaled = [(t, f, v * final_modifier, m) for t, f, v, m in scaled]
