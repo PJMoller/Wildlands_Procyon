@@ -142,51 +142,52 @@ To stop the container:
 ## Project Structure
     Wildlands_Procyon/
     ├── .github/
-    │    └── workflows/ 
+    │    └── workflows/                          # CI/CD automation
     │	     └── ci.yaml 
     ├── .vscode/
     │    └── settings.json 
     ├── data/
-    │   ├── database/  
-    │   ├── models/  
-    │   ├── predictions/           # Generated predictions
-    │   ├── processed/             # Cleaned data
-    │   ├── raw/                   # Input data files
+    │   ├── database/                            # User credentials
+    │   ├── models/                              # Trained LightGBM models 
+    │   ├── predictions/                         # Generated predictions
+    │   ├── processed/                           # Cleaned data
+    │   ├── raw/                                 # Input data files
+    │   └── upload/                              # Inputted data files via site
     ├── scripts/
-    │   ├── paths.py
-    │   ├── run_data_cleaning.py
-    │   ├── run_model_training.py
-    │   └── run_make_prediction.py
+    │   ├── run_data_cleaning.py                 # Execute data cleaning
+    │   ├── run_model_training.py                # Execute model training
+    │   └── run_make_prediction.py               # Execute 365-day predictions
     ├── src/
-    │   ├── model_training/              # Model training modules
-    │   │    └── model_training.py       
-    │   ├── data_cleaning.py
-    │   ├── day_of_week_calib.py
-    │   ├── main.py
-    │   ├── new_365days_predict.py        # Prediction pipeline
-    │   └── paths.py
-    ├── tests/                     # Unit and integration tests
-    │   ├── error_test.py
-    │   ├── synth_test.py
-    │   └── test_data_cleaning.py
+    │   ├── model_training/        
+    │   │    └── model_training.py               # Model training file
+    │   ├── current_365days_predict.py           # 365 day prediction
+    │   ├── data_cleaning.py                     # Data cleaning file
+    │   ├── event_365days.py                     # Events 365 days
+    │   ├── main.py                
+    │   ├── paths.py                             # Path configuration
+    │   ├── single_day_predict.py                # Single day prediction
+    │   └── visualization_365days.py             # Prediction pipeline
+    ├── tests/                                   # Unit and integration tests
+    │   └── test_data_cleaning.py                # Data pipeline validation
     ├── webapp/
-    │   ├── static/                # CSS, JS, static assets
-    │   │    ├── script.js 
-    │   │    └── style.css  
-    │   ├── templates/             # HTML templates
-    │   │    ├── Dashboard.html 
-    │   │    ├── Loginpage.html 
-    │   │    └── Slider.html 
-    │   ├── translations/          # Translations for babel
-    │   ├── app.py                 # Main Flask application
-    │   ├── babel.cfg
-    │   └──  database.db           # SQLite database
-    ├── compose.yml                # Docker Compose configuration
-    ├── Dockerfile                 # Container configuration
-    ├── paths.py  
-    ├── README.md                         
-    ├── requirements.txt           # Python dependencies
-    └── visualization_365days.py
+    │   ├── static/                              # CSS, JS, static assets
+    │   │    ├── script.js                       # Dashboard interactivity
+    │   │    └── style.css                       # Styling & layout
+    │   ├── templates/                           # HTML templates
+    │   │    ├── Dashboard.html                  # Main forecast dashboard
+    │   │    ├── Loginpage.html                  # Secure login
+    │   │    └── Slider.html                     # What-if scenarios
+    │   ├── translations/                        # Translations for babel
+    │   ├── app.py                               # Main Flask application
+    │   ├── babel.cfg                            # Babel configuration
+    │   └── database.db                          # SQLite database
+    ├── .gitignore                               # Exclude sensitive data 
+    ├── compose.yml                              # Docker Compose configuration
+    ├── Dockerfile                               # Container configuration
+    ├── README.md                                # Setup & usage documentation       
+    ├── requirements.txt                         # Python dependencies
+    └── run_daily_pipeline.py                    # Global script
+
 
 
 ## Troubleshooting
@@ -202,4 +203,5 @@ If port 5000 is busy, modify the port mapping in compose.yml or specify a differ
 #### Module Import Errors
 Ensure you're running scripts from the project root directory and that the Python path is correctly configured.
 
+### Where to find in documentation
 You can also find this information in the group portfolio under the "How to use" header.
