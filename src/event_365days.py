@@ -270,7 +270,7 @@ def _apply_scaling_pipeline(
         scaled = [(t, f, 0.0, m) for t, f, v, m in scaled]
     
     if apply_weekend_modifier:
-        final_modifier = 1.2 if is_weekend else 0.9
+        final_modifier = 1.6 if is_weekend else 0.7
         scaled = [(t, f, v * final_modifier, m) for t, f, v, m in scaled]
     
     return scaled
@@ -367,7 +367,7 @@ def predict_next_365_days(
     recent_baseline = sum(raw_target_doy_map.get(d.dayofyear, 0) for d in bt["date"].unique())
     if recent_baseline == 0:
         recent_baseline = 1.0
-    trend_ratio = manual_growth_override if manual_growth_override else np.clip(recent_actuals / recent_baseline, 0.70, 1.30)
+    trend_ratio = manual_growth_override if manual_growth_override else np.clip(recent_actuals / recent_baseline, 0.70, 1.20)
     
     target_doy_map = {k: v * trend_ratio for k, v in raw_target_doy_map.items()}
     target_family_map = {k: v * trend_ratio for k, v in raw_target_family_map.items()}
