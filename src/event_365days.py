@@ -19,6 +19,13 @@ if PROJECT_ROOT not in sys.path:
 
 warnings.filterwarnings("ignore")
 
+# ============================================================================
+# CONFIGURATION: Toggle forecast start date
+# ============================================================================
+USE_CUSTOM_START_DATE = True  # Set to True to use custom date, False for today
+CUSTOM_START_DATE = "01-01-2026"  # Format: "DD-MM-YYYY"
+# ============================================================================
+
 # Import shared paths (folders and files) used across the project
 from src.paths import (
     PREDICTIONS_DIR, PROCESSED_DIR, MODELS_DIR,
@@ -321,10 +328,22 @@ def predict_next_365_days(
     Event impacts are exact copies of historical analysis.
     """
     
-    if verbose:
-        print("="*70)
-        print("FORECAST WITH HISTORICAL EVENTS ONLY")
-        print("="*70)
+    # Determine start date based on configuration
+    if USE_CUSTOM_START_DATE:
+        # Parse DD-MM-YYYY format
+        start_date = pd.to_datetime(CUSTOM_START_DATE, format='%d-%m-%Y').normalize()
+        if verbose:
+            print("="*70)
+            print("FORECAST WITH HISTORICAL EVENTS ONLY")
+            print(f"CUSTOM START DATE: {start_date.strftime('%d-%m-%Y')}")
+            print("="*70)
+    else:
+        start_date = pd.Timestamp.now().normalize()
+        if verbose:
+            print("="*70)
+            print("FORECAST WITH HISTORICAL EVENTS ONLY")
+            print(f"START DATE: Today ({start_date.strftime('%d-%m-%Y')})")
+            print("="*70)
     
     # Load trained models and feature list
     with open(MODELS_DIR / "lgbm_model.pkl", "rb") as f:
@@ -483,7 +502,8 @@ def predict_next_365_days(
     event_count = 0
     total_event_impact = 0
     
-    today = pd.Timestamp.now().normalize()
+    # Use configured start date instead of always using today
+    today = start_date
     
     for step in range(forecast_days):
         current_date = today + timedelta(days=step)
@@ -618,9 +638,10 @@ def predict_next_365_days(
         if event_count > 0:
             print(f"Avg Impact per Event Day: {total_event_impact / event_count:+,.0f}")
     
-    # Save forecast to timestamped CSV
+    # Save forecast to timestamped CSV with start date in filename (YYYYMMDD format for sorting)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M")
-    out_path = PREDICTIONS_DIR / f"forecast_365days_historical_only_{timestamp}.csv"
+    start_date_str = start_date.strftime("%Y%m%d")
+    out_path = PREDICTIONS_DIR / f"forecast_365days_historical_only_from_{start_date_str}_{timestamp}.csv"
     forecast_df.to_csv(out_path, index=False)
     
     if verbose:
