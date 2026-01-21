@@ -22,7 +22,7 @@ warnings.filterwarnings("ignore")
 # ============================================================================
 # CONFIGURATION: Toggle forecast start date
 # ============================================================================
-USE_CUSTOM_START_DATE = True  # Set to True to use custom date, False for today
+USE_CUSTOM_START_DATE = False  # Set to True to use custom date, False for today
 CUSTOM_START_DATE = "01-01-2026"  # Format: "DD-MM-YYYY"
 # ============================================================================
 
