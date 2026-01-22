@@ -23,8 +23,8 @@ def visualize_forecast():
         print("Error: No forecast files found in predictions directory")
         return
     
-    # forecast_file = forecast_files[0]
-    forecast_file = PREDICTIONS_DIR / "forecast_365days_historical_only_20260120_1925.csv"
+    forecast_file = forecast_files[0]
+    #forecast_file = PREDICTIONS_DIR / "forecast_365days_historical_only_20260120_1925.csv"
     print(f"Visualizing: {forecast_file.name}")
     
     # Load forecast data
