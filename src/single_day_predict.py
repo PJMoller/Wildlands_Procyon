@@ -418,6 +418,8 @@ def predict_single_day(
             "temperature": temperature, "days_until_holiday": days_until_hol, "days_since_holiday": days_since_hol,
             "holiday_intensity": _safe_float(hol_feats.get("holiday_intensity", 0)),
             "campaign_strength": _safe_float(camp_feats.get("campaign_strength", 0)),
+            "precip_morning": precip_morning, "precip_afternoon": precip_afternoon,
+            "rain_morning": rain_morning, "rain_afternoon": rain_afternoon,
             **yoy_vals, **hol_feats, **evt_feats, **camp_feats,
             f"ticket_{tname}": 1, f"family_{tfam}": 1
         }
