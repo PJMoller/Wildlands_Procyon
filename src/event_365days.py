@@ -403,6 +403,10 @@ def predict_next_365_days(forecast_days=365, verbose=True, growth_rate=1.1):
             if not match.empty:
                 w_row = match.iloc[0].to_dict()
         temperature = _safe_float(w_row.get("temperature", 10.0))
+        rain_morning = _safe_float(w_row.get("rain_morning", 0))
+        rain_afternoon = _safe_float(w_row.get("rain_afternoon", 0))
+        precip_morning = _safe_float(w_row.get("precip_morning", 0))
+        precip_afternoon = _safe_float(w_row.get("precip_afternoon", 0))
 
         # Features
         days_until_hol, days_since_hol = _compute_holiday_proximity(current_date, holiday_dates_sorted)
@@ -424,6 +428,8 @@ def predict_next_365_days(forecast_days=365, verbose=True, growth_rate=1.1):
                 "year": year, "month": month, "day": day, "week": week, "weekday": weekday,
                 "day_of_year": doy, "is_weekend": is_weekend,
                 "temperature": temperature,
+                "precip_morning": precip_morning, "precip_afternoon": precip_afternoon,
+                "rain_morning": rain_morning, "rain_afternoon": rain_afternoon,
                 "days_until_holiday": days_until_hol, "days_since_holiday": days_since_hol,
                 "holiday_intensity": _safe_float(hol_feats.get("holiday_intensity", 0)),
                 "campaign_strength": _safe_float(camp_feats.get("campaign_strength", 0)),
